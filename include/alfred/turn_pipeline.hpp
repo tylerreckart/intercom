@@ -1,0 +1,94 @@
+#pragma once
+
+#include "alfred/arbiter_client.hpp"
+#include "alfred/config.hpp"
+#include "alfred/fast_path.hpp"
+#include "alfred/session_store.hpp"
+#include "alfred/stt.hpp"
+#include "alfred/tts.hpp"
+
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+namespace alfred {
+
+// Sink for reply PCM — HTTP chunked body today; WebSocket binary frames later.
+class AudioSink {
+ public:
+  virtual ~AudioSink() = default;
+  // Return false to abort synthesis / pipeline.
+  virtual bool write(const std::uint8_t* data, std::size_t len) = 0;
+};
+
+struct TurnResult {
+  std::string turn_id;
+  std::string transcript;
+  std::int64_t conversation_id = 0;
+  bool ok = false;
+  std::string error;
+  bool used_fast_path = false;
+};
+
+struct TurnHandle {
+  std::string turn_id;
+  std::atomic<bool> cancel{false};
+  std::string arbiter_request_id;
+  std::mutex mu;
+};
+
+// Transport-agnostic utterance pipeline (HTTP PTT now; WS duplex later).
+class TurnPipeline {
+ public:
+  TurnPipeline(Config config,
+               std::shared_ptr<SttProvider> stt,
+               std::shared_ptr<TtsProvider> tts,
+               std::shared_ptr<ArbiterClient> arbiter,
+               std::shared_ptr<SessionStore> sessions);
+
+  TurnResult run_utterance(const std::string& device_id,
+                           const std::vector<std::uint8_t>& pcm,
+                           int sample_rate,
+                           int channels,
+                           AudioSink& sink);
+
+  // Same as run_utterance after STT — used when the transport already has text
+  // (HTTP sets X-Transcript before streaming PCM; WS can feed partials later).
+  // If turn_id is non-empty it is used; otherwise a new id is generated.
+  TurnResult run_text_utterance(const std::string& device_id,
+                                const std::string& transcript,
+                                AudioSink& sink,
+                                std::string turn_id = {});
+
+  bool cancel_turn(const std::string& turn_id, std::string* err);
+
+  std::optional<DeviceSession> session_for(const std::string& device_id) const;
+
+  const Config& config() const { return config_; }
+  SttProvider& stt() { return *stt_; }
+  TtsProvider& tts() { return *tts_; }
+  ArbiterClient& arbiter() { return *arbiter_; }
+
+ private:
+  std::int64_t ensure_conversation(const std::string& device_id, std::string* err);
+  void register_turn(std::shared_ptr<TurnHandle> h);
+  void unregister_turn(const std::string& turn_id);
+  std::shared_ptr<TurnHandle> find_turn(const std::string& turn_id);
+
+  Config config_;
+  std::shared_ptr<SttProvider> stt_;
+  std::shared_ptr<TtsProvider> tts_;
+  std::shared_ptr<ArbiterClient> arbiter_;
+  std::shared_ptr<SessionStore> sessions_;
+  FastPath fast_path_;
+
+  mutable std::mutex turns_mu_;
+  std::unordered_map<std::string, std::shared_ptr<TurnHandle>> turns_;
+};
+
+}  // namespace alfred
