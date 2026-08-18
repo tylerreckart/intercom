@@ -16,3 +16,4 @@ compile_commands.json
 *.o
 *.a
 CMakeUserPresets.json
+firmware/nano-esp32/secrets.h
