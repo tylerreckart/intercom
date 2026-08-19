@@ -40,17 +40,63 @@ int parse_sample_rate(const httplib::Request& req, int fallback) {
   return fallback;
 }
 
-class ChunkedPcmSink : public AudioSink {
+class CollectingSink : public AudioSink {
  public:
-  explicit ChunkedPcmSink(httplib::DataSink& sink) : sink_(sink) {}
+  std::vector<std::uint8_t> pcm;
 
   bool write(const std::uint8_t* data, std::size_t len) override {
-    return sink_.write(reinterpret_cast<const char*>(data), len);
+    pcm.insert(pcm.end(), data, data + len);
+    return true;
+  }
+};
+
+std::string header_safe(std::string s) {
+  for (char& c : s) {
+    if (c == '\r' || c == '\n' || c == '\0') c = ' ';
+  }
+  if (s.size() > 240) s.resize(240);
+  return s;
+}
+
+void send_turn_response(httplib::Response& res, const TurnResult& result,
+                        std::vector<std::uint8_t>&& pcm, int sample_rate,
+                        const std::string& device_id) {
+  res.set_header("X-Turn-Id", result.turn_id);
+  res.set_header("X-Transcript", result.transcript);
+  res.set_header("X-Device-Id", device_id);
+  if (result.conversation_id != 0) {
+    res.set_header("X-Conversation-Id", std::to_string(result.conversation_id));
+  }
+  if (result.used_fast_path) {
+    res.set_header("X-Fast-Path", "1");
   }
 
- private:
-  httplib::DataSink& sink_;
-};
+  const bool failed = !result.ok || !result.error.empty() || pcm.empty();
+  if (failed && pcm.empty()) {
+    const std::string err = result.error.empty() ? "empty tts audio" : result.error;
+    std::cerr << "alfred turn error: " << err << std::endl;
+    res.status = 502;
+    res.set_header("X-Alfred-Error", header_safe(err));
+    nlohmann::json j = {
+        {"error", err},
+        {"ok", false},
+        {"turn_id", result.turn_id},
+        {"fast_path", result.used_fast_path},
+    };
+    res.set_content(j.dump(), "application/json");
+    return;
+  }
+
+  if (!result.error.empty()) {
+    std::cerr << "alfred turn warning: " << result.error << std::endl;
+    res.set_header("X-Alfred-Error", header_safe(result.error));
+  }
+
+  const std::string ctype =
+      "audio/L16; rate=" + std::to_string(sample_rate) + "; channels=1";
+  res.status = 200;
+  res.set_content(std::string(pcm.begin(), pcm.end()), ctype);
+}
 
 }  // namespace
 
@@ -141,51 +187,19 @@ void run_http_server(ServerDeps deps) {
         pcm, sample_rate, deps.config.channels, &stt_err);
     if (transcript.empty()) {
       res.status = 502;
-      nlohmann::json j = {{"error", stt_err.empty() ? "stt failed" : stt_err}};
+      const std::string err = stt_err.empty() ? "stt failed" : stt_err;
+      res.set_header("X-Alfred-Error", header_safe(err));
+      nlohmann::json j = {{"error", err}};
       res.set_content(j.dump(), "application/json");
       return;
     }
 
-    // Pre-assign turn id by running text path inside provider; set known headers now.
-    // Conversation may be created during the turn — expose prior session if any.
-    if (auto session = deps.pipeline->session_for(device_id)) {
-      res.set_header("X-Conversation-Id", std::to_string(session->conversation_id));
-    }
-
     const std::string turn_id = alfred::make_turn_id();
-    const std::string ctype =
-        "audio/L16; rate=" + std::to_string(deps.config.sample_rate) +
-        "; channels=1";
-    res.set_header("Content-Type", ctype);
-    res.set_header("X-Transcript", transcript);
-    res.set_header("X-Device-Id", device_id);
-    res.set_header("X-Turn-Id", turn_id);
-
-    struct State {
-      bool ran = false;
-      std::string device_id;
-      std::string transcript;
-      std::string turn_id;
-      TurnResult result;
-    };
-    auto state = std::make_shared<State>();
-    state->device_id = device_id;
-    state->transcript = transcript;
-    state->turn_id = turn_id;
-
-    res.set_content_provider(
-        ctype, [deps, state](size_t, httplib::DataSink& sink) {
-          if (state->ran) {
-            sink.done();
-            return true;
-          }
-          state->ran = true;
-          ChunkedPcmSink audio(sink);
-          state->result = deps.pipeline->run_text_utterance(
-              state->device_id, state->transcript, audio, state->turn_id);
-          sink.done();
-          return true;
-        });
+    CollectingSink audio;
+    const TurnResult result = deps.pipeline->run_text_utterance(
+        device_id, transcript, audio, turn_id);
+    send_turn_response(res, result, std::move(audio.pcm), deps.config.sample_rate,
+                       device_id);
   });
 
   // Optional JSON text utterance for bridge testing without PCM.
@@ -214,43 +228,12 @@ void run_http_server(ServerDeps deps) {
       return;
     }
 
-    if (auto session = deps.pipeline->session_for(device_id)) {
-      res.set_header("X-Conversation-Id", std::to_string(session->conversation_id));
-    }
     const std::string turn_id = alfred::make_turn_id();
-    const std::string ctype =
-        "audio/L16; rate=" + std::to_string(deps.config.sample_rate) +
-        "; channels=1";
-    res.set_header("Content-Type", ctype);
-    res.set_header("X-Transcript", transcript);
-    res.set_header("X-Device-Id", device_id);
-    res.set_header("X-Turn-Id", turn_id);
-
-    struct State {
-      bool ran = false;
-      std::string device_id;
-      std::string transcript;
-      std::string turn_id;
-    };
-    auto state = std::make_shared<State>();
-    state->device_id = device_id;
-    state->transcript = transcript;
-    state->turn_id = turn_id;
-
-    res.set_content_provider(
-        ctype, [deps, state](size_t, httplib::DataSink& sink) {
-          if (state->ran) {
-            sink.done();
-            return true;
-          }
-          state->ran = true;
-          ChunkedPcmSink audio(sink);
-          auto result = deps.pipeline->run_text_utterance(
-              state->device_id, state->transcript, audio, state->turn_id);
-          (void)result;
-          sink.done();
-          return true;
-        });
+    CollectingSink audio;
+    const TurnResult result = deps.pipeline->run_text_utterance(
+        device_id, transcript, audio, turn_id);
+    send_turn_response(res, result, std::move(audio.pcm), deps.config.sample_rate,
+                       device_id);
   });
 
   std::cout << "alfred listening on http://" << deps.config.listen_host << ":"

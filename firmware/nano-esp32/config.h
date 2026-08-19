@@ -15,8 +15,10 @@
 #endif
 
 #ifndef ALFRED_HOST
-#define ALFRED_HOST "192.168.1.10"
+// LAN IP of the machine running Alfred — not 127.0.0.1 (that is the ESP itself).
+#define ALFRED_HOST "192.168.86.40"
 #endif
+#define FIRMWARE_CONFIG_TAG "alfred-lan-v2"
 #ifndef ALFRED_PORT
 #define ALFRED_PORT 8090
 #endif
@@ -32,16 +34,22 @@
 #define MIN_RECORD_MS 400
 #define HEADER_TIMEOUT_MS 120000
 #define HTTP_TIMEOUT_MS 15000
+#define AUDIO_WAIT_MS HEADER_TIMEOUT_MS
 
-// Arduino Nano ESP32 silkscreen -> GPIO (nora variant).
-#define PIN_MIC_WS 5    // D2
-#define PIN_MIC_BCLK 6  // D3
-#define PIN_MIC_SD 7    // D4
-#define PIN_SPK_WS 8    // D5
-#define PIN_SPK_BCLK 9  // D6
-#define PIN_SPK_DIN 10  // D7
-#define PIN_PTT 17      // D8, to GND, INPUT_PULLUP
-#define PIN_AMP_SD 18   // D9 -> MAX98357A SD (HIGH=on, LOW=mute)
+// Silkscreen D# / A0 labels — correct in either IDE pin numbering mode.
+#define PIN_MIC_WS D2
+#define PIN_MIC_BCLK D3
+#define PIN_MIC_SD D4
+#define PIN_SPK_WS D5
+#define PIN_SPK_BCLK D6
+#define PIN_SPK_DIN D7
+#define PIN_PTT D8       // to GND, INPUT_PULLUP
+#define PIN_AMP_SD D9    // MAX98357A SD (HIGH=on, LOW=mute)
+#define PIN_THINK_LED D10
+#define THINK_BLINK_MS 250
+#define PIN_VOLUME A0    // A50k wiper (ends to 3V3 and GND)
+#define ADC_MAX 4095
+#define VOL_UPDATE_MS 30
 
 // ICS-43434 L/R tied to GND => left slot. Set 1 if you wired L/R to 3V3.
 #define MIC_LEFT_SLOT 1

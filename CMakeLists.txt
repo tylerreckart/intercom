@@ -39,6 +39,7 @@ add_executable(alfred
   src/turn_pipeline.cpp
   src/http_server.cpp
   src/util.cpp
+  src/speakable.cpp
 )
 
 target_include_directories(alfred PRIVATE
