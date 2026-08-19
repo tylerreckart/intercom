@@ -24,7 +24,7 @@ std::optional<std::vector<std::uint8_t>> read_wav_s16le(const std::string& path,
                                                         int* out_sample_rate,
                                                         int* out_channels);
 
-// Linear resample mono s16le PCM.
+// Cubic resample mono s16le PCM.
 std::vector<std::uint8_t> resample_s16le_mono(const std::vector<std::uint8_t>& pcm,
                                               int from_rate,
                                               int to_rate);

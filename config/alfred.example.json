@@ -5,11 +5,20 @@
   "devices": {},
   "arbiter_base_url": "http://127.0.0.1:8080",
   "arbiter_token": "atr_REPLACE_ME",
-  "agent": "index",
+  "agent": "alfred",
+  "agent_def": "alfred.agent.json",
   "session_db": "~/.alfred/sessions.db",
-  "sample_rate": 16000,
+  "sample_rate": 24000,
   "channels": 1,
   "fast_path": true,
+  "tts_provider": "kokoro",
+  "kokoro": {
+    "binary": "/Users/tyler/.alfred/venv-kokoro/bin/kokoro-tts",
+    "voice": "af_heart",
+    "speed": 1.0,
+    "model": "/Users/tyler/.alfred/models/kokoro/kokoro-v1.0.onnx",
+    "voices": "/Users/tyler/.alfred/models/kokoro/voices-v1.0.bin"
+  },
   "whisper": {
     "binary": "whisper-cli",
     "model": "~/.alfred/models/ggml-base.en.bin",
@@ -20,6 +29,10 @@
     "binary": "piper",
     "model": "~/.alfred/models/en_US-lessac-medium.onnx",
     "timeout_seconds": 60,
-    "native_sample_rate": 22050
+    "native_sample_rate": 22050,
+    "length_scale": 1.18,
+    "noise_scale": 0.45,
+    "noise_w": 0.5,
+    "sentence_silence": 0.22
   }
 }

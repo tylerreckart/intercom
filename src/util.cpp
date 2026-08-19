@@ -169,14 +169,26 @@ std::vector<std::uint8_t> resample_s16le_mono(const std::vector<std::uint8_t>& p
       static_cast<std::size_t>(std::floor(static_cast<double>(in_samples) / ratio));
   std::vector<std::uint8_t> out(out_samples * 2);
   auto* o = reinterpret_cast<std::int16_t*>(out.data());
+  auto at = [&](std::ptrdiff_t i) -> double {
+    if (i < 0) i = 0;
+    if (static_cast<std::size_t>(i) >= in_samples) i = static_cast<std::ptrdiff_t>(in_samples - 1);
+    return static_cast<double>(in[i]);
+  };
   for (std::size_t i = 0; i < out_samples; ++i) {
     const double src = static_cast<double>(i) * ratio;
-    const std::size_t i0 = static_cast<std::size_t>(src);
-    const std::size_t i1 = std::min(i0 + 1, in_samples - 1);
-    const double frac = src - static_cast<double>(i0);
-    const double s =
-        static_cast<double>(in[i0]) * (1.0 - frac) + static_cast<double>(in[i1]) * frac;
-    o[i] = static_cast<std::int16_t>(std::lround(s));
+    const auto i1 = static_cast<std::ptrdiff_t>(src);
+    const double t = src - static_cast<double>(i1);
+    const double y0 = at(i1 - 1);
+    const double y1 = at(i1);
+    const double y2 = at(i1 + 1);
+    const double y3 = at(i1 + 2);
+    const double c0 = y1;
+    const double c1 = 0.5 * (y2 - y0);
+    const double c2 = y0 - 2.5 * y1 + 2.0 * y2 - 0.5 * y3;
+    const double c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2);
+    const double s = ((c3 * t + c2) * t + c1) * t + c0;
+    const double clipped = std::max(-32768.0, std::min(32767.0, s));
+    o[i] = static_cast<std::int16_t>(std::lround(clipped));
   }
   return out;
 }

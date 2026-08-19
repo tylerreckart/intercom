@@ -18,7 +18,8 @@ struct ArbiterStreamCallbacks {
 
 class ArbiterClient {
  public:
-  ArbiterClient(std::string base_url, std::string token, std::string agent);
+  ArbiterClient(std::string base_url, std::string token, std::string agent,
+                std::string agent_def_json = "");
 
   // Create a conversation; returns id or nullopt.
   std::optional<std::int64_t> create_conversation(const std::string& title,
@@ -41,6 +42,7 @@ class ArbiterClient {
   std::string base_url_;
   std::string token_;
   std::string agent_;
+  std::string agent_def_json_;
 };
 
 }  // namespace alfred

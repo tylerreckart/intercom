@@ -29,7 +29,7 @@
 #define ALFRED_DEVICE_ID ""
 #endif
 
-#define SAMPLE_RATE 16000
+#define SAMPLE_RATE 24000
 #define MAX_RECORD_MS 8000
 #define MIN_RECORD_MS 400
 #define HEADER_TIMEOUT_MS 120000
@@ -51,5 +51,17 @@
 #define ADC_MAX 4095
 #define VOL_UPDATE_MS 30
 
-// ICS-43434 L/R tied to GND => left slot. Set 1 if you wired L/R to 3V3.
+// Mic family — set before flashing when you swap breakouts.
+#define MIC_ICS43434 0  // INMP441 and clones use the same I2S timing
+#define MIC_SPH0645 1   // Adafruit SPH0645LM4H (ICS-43434 drop-in wiring)
+#ifndef MIC_TYPE
+#define MIC_TYPE MIC_ICS43434
+#endif
+
+// SEL/L/R tied to GND => left slot. Set 0 if SEL is tied to 3V3.
 #define MIC_LEFT_SLOT 1
+
+// Log mic pin map + OUT activity on every PTT capture.
+#ifndef MIC_PTT_PIN_DEBUG
+#define MIC_PTT_PIN_DEBUG 1
+#endif

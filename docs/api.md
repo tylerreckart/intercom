@@ -75,7 +75,7 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 
 | Alfred | Arbiter |
 |--------|---------|
-| First utterance per device | `POST /v1/conversations` (`agent_id` from config) |
+| First utterance per device | `POST /v1/conversations` (`agent_id` + `agent_def` from config) |
 | Each turn | `POST /v1/conversations/:id/messages` + SSE |
 | Cancel | `POST /v1/requests/:id/cancel` |
 | Idempotency-Key | Alfred `turn_id` |

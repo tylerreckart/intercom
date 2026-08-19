@@ -4,6 +4,7 @@
 #include "alfred/session_store.hpp"
 #include "alfred/stt_whisper.hpp"
 #include "alfred/tts_piper.hpp"
+#include "alfred/tts_kokoro.hpp"
 #include "alfred/turn_pipeline.hpp"
 
 #include <iostream>
@@ -55,9 +56,15 @@ int main(int argc, char** argv) {
   }
 
   auto stt = std::make_shared<alfred::WhisperStt>(config.whisper);
-  auto tts = std::make_shared<alfred::PiperTts>(config.piper, config.sample_rate);
+  std::shared_ptr<alfred::TtsProvider> tts;
+  if (config.tts_provider == "kokoro") {
+    tts = std::make_shared<alfred::KokoroTts>(config.kokoro, config.sample_rate);
+  } else {
+    tts = std::make_shared<alfred::PiperTts>(config.piper, config.sample_rate);
+  }
   auto arbiter = std::make_shared<alfred::ArbiterClient>(
-      config.arbiter_base_url, config.arbiter_token, config.agent);
+      config.arbiter_base_url, config.arbiter_token, config.agent,
+      config.agent_def_json);
   auto pipeline = std::make_shared<alfred::TurnPipeline>(
       config, stt, tts, arbiter, sessions);
 

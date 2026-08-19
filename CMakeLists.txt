@@ -33,6 +33,7 @@ add_executable(alfred
   src/config.cpp
   src/stt_whisper.cpp
   src/tts_piper.cpp
+  src/tts_kokoro.cpp
   src/arbiter_client.cpp
   src/session_store.cpp
   src/fast_path.cpp
@@ -58,4 +59,4 @@ if(APPLE)
 endif()
 
 install(TARGETS alfred RUNTIME DESTINATION bin)
-install(FILES config/alfred.example.json DESTINATION share/alfred)
+install(FILES config/alfred.example.json config/alfred.agent.json DESTINATION share/alfred)

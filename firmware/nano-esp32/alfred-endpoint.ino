@@ -2,9 +2,11 @@
 #include <esp_heap_caps.h>
 #include <esp_system.h>
 #include <math.h>
+#include <string.h>
 
 #include "driver/i2s.h"
 #include "driver/gpio.h"
+#include "soc/i2s_reg.h"
 #include "config.h"
 
 enum class PlayResult { Done, BargeIn, Error };
@@ -37,12 +39,16 @@ static size_t gMaxSamples = 0;
 static String gTurnId;
 
 static bool gThinking = false;
+static bool gPlaying = false;
 static bool gThinkLit = false;
 static uint32_t gThinkLastMs = 0;
 static int gVolQ15 = 32767;
 static uint32_t gVolLastMs = 0;
 static bool gPttArmed = false;
 static size_t gPlayBytes = 0;
+static int gVoiceFade = 0;
+static uint8_t gPcmOdd = 0;
+static bool gPcmOddValid = false;
 
 static gpio_num_t ampGpio() {
   return (gpio_num_t)digitalPinToGPIONumber(PIN_AMP_SD);
@@ -63,17 +69,21 @@ static void thinkLed(bool on) {
 }
 
 static void updatePttLed() {
+  if (gPlaying) {
+    thinkLed(true);
+    return;
+  }
   if (gThinking) return;
   thinkLed(pttHeld());
 }
 
 static void thinking(bool active) {
   gThinking = active;
-  if (!active) thinkLed(false);
+  if (!active && !gPlaying) thinkLed(false);
 }
 
 static void thinkingTick() {
-  if (!gThinking) return;
+  if (!gThinking || gPlaying) return;
   const uint32_t now = millis();
   if (now - gThinkLastMs < THINK_BLINK_MS) return;
   gThinkLastMs = now;
@@ -118,29 +128,42 @@ static bool allocCapture() {
   return gPcm != nullptr;
 }
 
+static void applyMicHwFix() {
+#if MIC_TYPE == MIC_SPH0645
+  // SPH0645 samples on the opposite BCLK edge vs ICS-43434/INMP441.
+  REG_SET_BIT(I2S_RX_CONF1_REG(I2S_PORT), I2S_RX_MSB_SHIFT);
+  REG_SET_FIELD(I2S_RX_TIMING_REG(I2S_PORT), I2S_RX_SD_IN_DM, 2);
+#endif
+}
+
+static const char *micTypeName() {
+#if MIC_TYPE == MIC_SPH0645
+  return "SPH0645";
+#else
+  return "ICS43434/INMP441";
+#endif
+}
+
 static bool startMic() {
   i2sStop();
-  const i2s_config_t cfg = {
+  i2s_config_t cfg = {
       .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
       .sample_rate = SAMPLE_RATE,
       .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+      // ICS-43434/INMP441 emit 32-bit stereo frames; ONLY_LEFT often reads
+      // all zeros on ESP32-S3 even when OUT is toggling.
+      .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
       .communication_format = I2S_COMM_FORMAT_STAND_I2S,
       .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-      .dma_buf_count = 4,
+      .dma_buf_count = 8,
       .dma_buf_len = 256,
       .use_apll = false,
       .tx_desc_auto_clear = false,
       .fixed_mclk = 0,
-      .mclk_multiple = I2S_MCLK_MULTIPLE_256,
-      .bits_per_chan = I2S_BITS_PER_CHAN_32BIT,
-      .chan_mask = I2S_TDM_ACTIVE_CH0,
-      .total_chan = 2,
-      .left_align = false,
-      .big_edin = false,
-      .bit_order_msb = false,
-      .skip_msk = false,
   };
+#if MIC_TYPE == MIC_SPH0645
+  cfg.left_align = true;
+#endif
   esp_err_t err = i2s_driver_install(I2S_PORT, &cfg, 0, nullptr);
   if (err != ESP_OK) {
     Serial.printf("mic i2s install err %d\n", (int)err);
@@ -157,9 +180,11 @@ static bool startMic() {
     i2sStop();
     return false;
   }
-  i2s_set_clk(I2S_PORT, SAMPLE_RATE, I2S_BITS_PER_SAMPLE_32BIT, I2S_CHANNEL_MONO);
+  i2s_set_clk(I2S_PORT, SAMPLE_RATE, I2S_BITS_PER_SAMPLE_32BIT,
+              I2S_CHANNEL_STEREO);
   i2s_zero_dma_buffer(I2S_PORT);
   i2s_start(I2S_PORT);
+  applyMicHwFix();
   return true;
 }
 
@@ -180,6 +205,39 @@ static uint32_t countGpioFlips(gpio_num_t pin, uint32_t ms, uint32_t *highsOut) 
   if (highsOut) *highsOut = highs;
   return flips;
 }
+
+static void printMicPinMap(const char *tag) {
+  Serial.printf(
+      "%s: mic %s slot=%s  LRCL=D%d→gpio%d  BCLK=D%d→gpio%d  OUT=D%d→gpio%d\n",
+      tag, micTypeName(), MIC_LEFT_SLOT ? "left" : "right", (int)PIN_MIC_WS,
+      (int)i2sGpio(PIN_MIC_WS), (int)PIN_MIC_BCLK, (int)i2sGpio(PIN_MIC_BCLK),
+      (int)PIN_MIC_SD, (int)i2sGpio(PIN_MIC_SD));
+  Serial.printf("%s: wire 3V→3V3  GND→GND  SEL→%s\n", tag,
+                MIC_LEFT_SLOT ? "GND" : "3V3");
+}
+
+static uint32_t logOutPinActivity(const char *tag, uint32_t ms, bool resetPin) {
+  const gpio_num_t sd = i2sGpio(PIN_MIC_SD);
+  if (resetPin) {
+    gpio_reset_pin(sd);
+    gpio_set_direction(sd, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(sd, GPIO_FLOATING);
+  }
+  uint32_t highs = 0;
+  const uint32_t flips = countGpioFlips(sd, ms, &highs);
+  Serial.printf("%s: OUT gpio%d flips=%u highs=%u (%ums while I2S on)\n", tag,
+                (int)sd, (unsigned)flips, (unsigned)highs, (unsigned)ms);
+  if (flips == 0 && highs == 0) {
+    Serial.printf("%s: OUT idle — OUT→D%d, 3V3, GND\n", tag, (int)PIN_MIC_SD);
+  } else if (flips == 0) {
+    Serial.printf("%s: OUT stuck HIGH — check OUT vs BCLK swap\n", tag);
+  }
+  return flips;
+}
+
+#if MIC_PTT_PIN_DEBUG
+static void logPttPinDebugPre() { printMicPinMap("ptt"); }
+#endif
 
 static void probeMicBitbang() {
   i2sStop();
@@ -217,33 +275,27 @@ static void probeMicBitbang() {
 
 static void probeMicWire() {
   if (!startMic()) return;
+  printMicPinMap("micwire");
 
-  uint32_t bclkHighs = 0, wsHighs = 0, sdHighs = 0;
+  uint32_t bclkHighs = 0, wsHighs = 0;
   const uint32_t bclkFlips =
       countGpioFlips(i2sGpio(PIN_MIC_BCLK), 30, &bclkHighs);
   const uint32_t wsFlips = countGpioFlips(i2sGpio(PIN_MIC_WS), 30, &wsHighs);
-
-  const gpio_num_t sd = i2sGpio(PIN_MIC_SD);
-  gpio_reset_pin(sd);
-  gpio_set_direction(sd, GPIO_MODE_INPUT);
-  gpio_set_pull_mode(sd, GPIO_FLOATING);
-  const uint32_t sdFlips = countGpioFlips(sd, 200, &sdHighs);
+  const uint32_t sdFlips = logOutPinActivity("micwire", 200, true);
 
   stopMic();
   pinMode(PIN_MIC_SD, INPUT);
-  Serial.printf("micwire: BCLK gpio %d flips=%u\n", (int)i2sGpio(PIN_MIC_BCLK),
-                (unsigned)bclkFlips);
+  Serial.printf("micwire: BCLK gpio %d flips=%u (gpio read may be 0 during I2S)\n",
+                (int)i2sGpio(PIN_MIC_BCLK), (unsigned)bclkFlips);
   Serial.printf("micwire: WS   gpio %d flips=%u\n", (int)i2sGpio(PIN_MIC_WS),
                 (unsigned)wsFlips);
-  Serial.printf("micwire: OUT  gpio %d flips=%u highs=%u\n", (int)sd,
-                (unsigned)sdFlips, (unsigned)sdHighs);
-  if (bclkFlips < 10 || wsFlips < 2) {
-    Serial.println("micwire: clocks are not on D2/D3 — pin numbering / wiring");
-  } else if (sdFlips == 0) {
-    Serial.println("micwire: clocks OK, OUT idle — ICS-43434 power or OUT≠D4");
-    Serial.println("  3V3 on 3V, GND, BCLK=D3, LRCL=D2, OUT=D4, SEL=GND");
+  if (bclkFlips < 10 && wsFlips < 2) {
+    Serial.println("micwire: BCLK/WS gpio reads unreliable during I2S — use clkblink");
+  }
+  if (sdFlips == 0) {
+    Serial.println("micwire: OUT idle — mic power or OUT≠D4");
   } else {
-    Serial.println("micwire: OUT is toggling — I2S capture path is the issue");
+    Serial.println("micwire: OUT toggling — check I2S decode / MIC_TYPE");
   }
 }
 
@@ -256,7 +308,7 @@ static bool startSpk() {
       .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
       .communication_format = I2S_COMM_FORMAT_STAND_I2S,
       .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-      .dma_buf_count = 8,
+      .dma_buf_count = 12,
       .dma_buf_len = 256,
       .use_apll = false,
       .tx_desc_auto_clear = true,
@@ -440,6 +492,38 @@ static bool pttHeld() { return digitalRead(PIN_PTT) == LOW; }
 
 static int16_t decodeMicWord(int32_t w) { return (int16_t)(w >> 14); }
 
+static int32_t pickMicRawWord(int32_t left, int32_t right) {
+  const uint32_t l = (uint32_t)left;
+  const uint32_t r = (uint32_t)right;
+  const uint32_t al = l ^ (l >> 31);
+  const uint32_t ar = r ^ (r >> 31);
+  if (al == 0 && ar == 0) return 0;
+  if (MIC_LEFT_SLOT) {
+    if (al >= ar) return left;
+    return right;
+  }
+  if (ar >= al) return right;
+  return left;
+}
+
+static size_t appendMicI2s(const int32_t *raw, size_t bytesRead, size_t samples,
+                           uint64_t *acc, int *zeroRaw, int *rawWords,
+                           uint32_t *peakRaw) {
+  if (bytesRead < 8) return samples;
+  const int frames = (int)bytesRead / 8;
+  for (int i = 0; i < frames && samples < gMaxSamples; ++i) {
+    const int32_t w = pickMicRawWord(raw[i * 2], raw[i * 2 + 1]);
+    (*rawWords)++;
+    if (w == 0) (*zeroRaw)++;
+    const uint32_t uw = (uint32_t)w;
+    if (uw > *peakRaw) *peakRaw = uw;
+    const int16_t s = decodeMicWord(w);
+    gPcm[samples++] = s;
+    *acc += (int32_t)s * (int32_t)s;
+  }
+  return samples;
+}
+
 static size_t recordPtt() {
   Serial.println("ptt: recording (hold, then release)");
   ampMute(true);
@@ -449,6 +533,9 @@ static size_t recordPtt() {
     Serial.println("ptt: mic start failed");
     return 0;
   }
+#if MIC_PTT_PIN_DEBUG
+  logPttPinDebugPre();
+#endif
 
   size_t samples = 0;
   const uint32_t t0 = millis();
@@ -456,6 +543,9 @@ static size_t recordPtt() {
   uint64_t acc = 0;
   int reads = 0;
   int empty = 0;
+  int zeroRaw = 0;
+  int rawWords = 0;
+  uint32_t peakRaw = 0;
   bool dumped = false;
 
   while (samples < gMaxSamples) {
@@ -466,31 +556,44 @@ static size_t recordPtt() {
     size_t bytesRead = 0;
     if (i2s_read(I2S_PORT, raw, sizeof(raw), &bytesRead, pdMS_TO_TICKS(50)) !=
             ESP_OK ||
-        bytesRead < 4) {
+        bytesRead < 8) {
       empty++;
       continue;
     }
     reads++;
-    const int n = (int)bytesRead / 4;
-    if (!dumped && n >= 4) {
-      Serial.printf("ptt: raw %08x %08x %08x %08x\n", (unsigned)raw[0],
+    if (!dumped && bytesRead >= 16) {
+      Serial.printf("ptt: raw L=%08x R=%08x L=%08x R=%08x\n", (unsigned)raw[0],
                     (unsigned)raw[1], (unsigned)raw[2], (unsigned)raw[3]);
       dumped = true;
     }
-    for (int i = 0; i < n && samples < gMaxSamples; ++i) {
-      const int16_t s = decodeMicWord(raw[i]);
-      gPcm[samples++] = s;
-      acc += (int32_t)s * (int32_t)s;
-    }
+    samples = appendMicI2s(raw, bytesRead, samples, &acc, &zeroRaw, &rawWords,
+                           &peakRaw);
   }
 
+  uint32_t outFlips = 0;
+#if MIC_PTT_PIN_DEBUG
+  outFlips = logOutPinActivity("ptt", 80, true);
+#endif
   stopMic();
+  pinMode(PIN_MIC_SD, INPUT);
   digitalWrite(LED_BUILTIN, LOW);
   const float rms = samples ? sqrtf((float)acc / (float)samples) : 0.f;
   Serial.printf("recorded %u samples, rms %.1f (reads %d empty %d)\n",
                 (unsigned)samples, rms, reads, empty);
+#if MIC_PTT_PIN_DEBUG
+  Serial.printf("ptt: i2s peak_raw=%08x zero_words=%d/%d\n", (unsigned)peakRaw,
+                zeroRaw, rawWords);
+#endif
   if (samples > 0 && rms < 20.f) {
-    Serial.println("ptt: mic nearly silent — check ICS-43434 3V3/GND/BCLK/WS/OUT");
+    if (outFlips > 100 && peakRaw == 0) {
+      Serial.println("ptt: OUT toggling but I2S all zero — re-upload stereo fix");
+    } else if (outFlips > 100) {
+      Serial.printf("ptt: low level — try MIC_LEFT_SLOT=%d or speak louder\n",
+                    MIC_LEFT_SLOT ? 0 : 1);
+    } else {
+      Serial.printf("ptt: mic nearly silent (type=%s slot=%s) — wiring\n",
+                    micTypeName(), MIC_LEFT_SLOT ? "left" : "right");
+    }
   }
   return samples;
 }
@@ -575,14 +678,40 @@ static bool readHeaders(WiFiClient &c, HttpHeaders &h, uint32_t timeoutMs) {
 }
 
 static PlayResult writeMonoBytesToSpk(const uint8_t *data, size_t len) {
-  gPlayBytes += len;
+  static const int kFadeSamples = SAMPLE_RATE * 15 / 1000;
+  uint8_t stack[1026];
+  const uint8_t *p = data;
+  size_t n = len;
+  if (gPcmOddValid && n > 0) {
+    stack[0] = gPcmOdd;
+    memcpy(stack + 1, data, n);
+    p = stack;
+    n += 1;
+    gPcmOddValid = false;
+  }
+  if (n % 2 == 1) {
+    gPcmOdd = p[n - 1];
+    gPcmOddValid = true;
+    n -= 1;
+  }
+  gPlayBytes += n;
   size_t i = 0;
-  while (i + 1 < len) {
+  int16_t tmp[128];
+  while (i + 1 < n) {
     if (pttHeld()) return PlayResult::BargeIn;
-    const size_t remainSamples = (len - i) / 2;
-    const size_t n = min(remainSamples, (size_t)128);
-    writeStereoMono((const int16_t *)(data + i), n);
-    i += n * 2;
+    const size_t remainSamples = (n - i) / 2;
+    const size_t count = min(remainSamples, (size_t)128);
+    memcpy(tmp, p + i, count * 2);
+    for (size_t k = 0; k < count; ++k) {
+      if (gVoiceFade < kFadeSamples) {
+        const float t = (float)gVoiceFade / (float)kFadeSamples;
+        const float g = t * t * (3.f - 2.f * t);
+        tmp[k] = (int16_t)lroundf((float)tmp[k] * g);
+        gVoiceFade++;
+      }
+    }
+    writeStereoMono(tmp, count);
+    i += count * 2;
   }
   return PlayResult::Done;
 }
@@ -662,6 +791,10 @@ static PlayResult playResponseBody(WiFiClient &c, const HttpHeaders &h) {
   Serial.printf("play: wait up to %ds (chunked=%d len=%d)\n", AUDIO_WAIT_MS / 1000,
                 (int)h.chunked, h.contentLength);
   gPlayBytes = 0;
+  gVoiceFade = 0;
+  gPcmOddValid = false;
+  gPlaying = true;
+  thinkLed(true);
   if (!startSpk()) return PlayResult::Error;
   primeSpkSilence();
   ampUnmuteAfterPrime();
@@ -675,6 +808,7 @@ static PlayResult playResponseBody(WiFiClient &c, const HttpHeaders &h) {
   }
   ampMute(true);
   stopSpk();
+  gPlaying = false;
   const char *rs = pr == PlayResult::Done      ? "done"
                    : pr == PlayResult::BargeIn ? "barge-in"
                                                : "error";
@@ -766,7 +900,7 @@ static PlayResult postUtterance(const int16_t *pcm, size_t samples) {
   const size_t bytes = samples * sizeof(int16_t);
   c.print("POST /v1/utterance HTTP/1.1\r\n");
   writeAuthHeaders(c);
-  c.print("Content-Type: audio/L16; rate=16000; channels=1\r\n");
+  c.print("Content-Type: audio/L16; rate=24000; channels=1\r\n");
   c.printf("Content-Length: %u\r\n", (unsigned)bytes);
   c.print("Connection: close\r\n\r\n");
 
@@ -951,20 +1085,18 @@ static void handleSerial() {
       size_t bytesRead = 0;
       if (i2s_read(I2S_PORT, raw, sizeof(raw), &bytesRead, pdMS_TO_TICKS(50)) !=
               ESP_OK ||
-          bytesRead < 4) {
+          bytesRead < 8) {
         continue;
       }
-      const int n = (int)bytesRead / 4;
-      if (!dumped && n >= 4) {
-        Serial.printf("mic: raw %08x %08x %08x %08x\n", (unsigned)raw[0],
+      if (!dumped && bytesRead >= 16) {
+        Serial.printf("mic: raw L=%08x R=%08x L=%08x R=%08x\n", (unsigned)raw[0],
                       (unsigned)raw[1], (unsigned)raw[2], (unsigned)raw[3]);
         dumped = true;
       }
-      for (int i = 0; i < n && samples < gMaxSamples; ++i) {
-        const int16_t s = decodeMicWord(raw[i]);
-        gPcm[samples++] = s;
-        acc += (int32_t)s * (int32_t)s;
-      }
+      int zeroRaw = 0, rawWords = 0;
+      uint32_t peakRaw = 0;
+      samples = appendMicI2s(raw, bytesRead, samples, &acc, &zeroRaw, &rawWords,
+                             &peakRaw);
     }
     stopMic();
     const float rms = samples ? sqrtf((float)acc / (float)samples) : 0.f;
@@ -974,6 +1106,10 @@ static void handleSerial() {
     postText("ping");
   } else if (cmd == "status") {
     postText("status");
+  } else if (cmd == "micinfo") {
+    Serial.printf("mic type=%s left_slot=%d sample_rate=%d\n", micTypeName(),
+                  (int)MIC_LEFT_SLOT, SAMPLE_RATE);
+    Serial.println("  debug: micwire | micbang | clkblink | mic");
   } else if (cmd == "vol") {
     updateVolume();
     Serial.printf("vol adc=%d gain=%d (4095=full)\n", analogRead(PIN_VOLUME),
@@ -1081,6 +1217,9 @@ void setup() {
   Serial.printf("volume adc=%d gain=%d\n", analogRead(PIN_VOLUME), gVolQ15);
   Serial.printf("spk i2s gpio bck=%d ws=%d din=%d sd=%d\n", i2sGpio(PIN_SPK_BCLK),
                 i2sGpio(PIN_SPK_WS), i2sGpio(PIN_SPK_DIN), i2sGpio(PIN_AMP_SD));
+  Serial.printf("mic type=%s left_slot=%d bck=%d ws=%d sd=%d\n", micTypeName(),
+                (int)MIC_LEFT_SLOT, i2sGpio(PIN_MIC_BCLK), i2sGpio(PIN_MIC_WS),
+                i2sGpio(PIN_MIC_SD));
   if (gVolQ15 < 512) {
     Serial.println("volume at minimum — turn A0 pot CW for Alfred playback");
     Serial.println("(tone/beep ignore pot; use beep to test speaker)");

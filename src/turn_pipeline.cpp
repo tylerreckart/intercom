@@ -178,12 +178,6 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   cbs.on_text_delta = [&](const std::string& delta) {
     if (handle->cancel.load()) return;
     speak_buf += delta;
-    for (const auto& sentence : flush_sentences(speak_buf, false)) {
-      if (!speak(sentence)) {
-        handle->cancel.store(true);
-        return;
-      }
-    }
   };
   cbs.on_done = [&](bool ok, const std::string& content, const std::string& error) {
     done_ok = ok;
@@ -200,18 +194,15 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     return finish(result);
   }
 
+  std::string spoken_text;
   for (const auto& sentence : flush_sentences(speak_buf, true)) {
-    if (!speak(sentence)) {
-      result.error = err.empty() ? "tts failed" : err;
-      return finish(result);
-    }
+    if (!spoken_text.empty()) spoken_text.push_back(' ');
+    spoken_text += sentence;
   }
-
-  if (spoken_chunks == 0 && !full_content.empty()) {
-    if (!speak(full_content)) {
-      result.error = err.empty() ? "tts failed" : err;
-      return finish(result);
-    }
+  if (spoken_text.empty()) spoken_text = full_content;
+  if (!speak(spoken_text)) {
+    result.error = err.empty() ? "tts failed" : err;
+    return finish(result);
   }
 
   DeviceSession s;

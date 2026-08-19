@@ -2,6 +2,7 @@
 #include "alfred/util.hpp"
 
 #include <cstdio>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -25,6 +26,25 @@ bool write_text_file(const std::string& path, const std::string& text) {
   if (!out) return false;
   out << text;
   return static_cast<bool>(out);
+}
+
+void apply_edge_fades(std::vector<std::uint8_t>* pcm, int sample_rate) {
+  if (!pcm || pcm->size() < 4 || sample_rate <= 0) return;
+  auto* s = reinterpret_cast<std::int16_t*>(pcm->data());
+  const std::size_t n = pcm->size() / 2;
+  std::size_t fade = static_cast<std::size_t>(sample_rate) * 12 / 1000;  // 12 ms
+  if (fade < 8) fade = 8;
+  if (fade > n / 4) fade = n / 4;
+  auto gain = [](std::size_t i, std::size_t fade_n) {
+    const double t = static_cast<double>(i) / static_cast<double>(fade_n);
+    return t * t * (3.0 - 2.0 * t);
+  };
+  for (std::size_t i = 0; i < fade; ++i) {
+    const double g = gain(i, fade);
+    s[i] = static_cast<std::int16_t>(std::lround(static_cast<double>(s[i]) * g));
+    s[n - 1 - i] =
+        static_cast<std::int16_t>(std::lround(static_cast<double>(s[n - 1 - i]) * g));
+  }
 }
 
 }  // namespace
@@ -71,6 +91,10 @@ bool PiperTts::synthesize(const std::string& text,
   cmd << shell_quote(cfg_.binary)
       << " --model " << shell_quote(cfg_.model)
       << " --output_file " << shell_quote(wav_path)
+      << " --length-scale " << cfg_.length_scale
+      << " --noise-scale " << cfg_.noise_scale
+      << " --noise-w " << cfg_.noise_w
+      << " --sentence-silence " << cfg_.sentence_silence
       << " < " << shell_quote(text_path)
       << " 2>/dev/null";
 
@@ -115,6 +139,7 @@ bool PiperTts::synthesize(const std::string& text,
   if (wav_rate != target_sample_rate_) {
     out = resample_s16le_mono(out, wav_rate, target_sample_rate_);
   }
+  apply_edge_fades(&out, target_sample_rate_);
 
   constexpr std::size_t kChunk = 4096;
   for (std::size_t off = 0; off < out.size(); off += kChunk) {

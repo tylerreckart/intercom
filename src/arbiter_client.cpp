@@ -129,8 +129,12 @@ void parse_sse_buffer(std::string& buf,
 
 }  // namespace
 
-ArbiterClient::ArbiterClient(std::string base_url, std::string token, std::string agent)
-    : base_url_(std::move(base_url)), token_(std::move(token)), agent_(std::move(agent)) {}
+ArbiterClient::ArbiterClient(std::string base_url, std::string token, std::string agent,
+                             std::string agent_def_json)
+    : base_url_(std::move(base_url)),
+      token_(std::move(token)),
+      agent_(std::move(agent)),
+      agent_def_json_(std::move(agent_def_json)) {}
 
 std::optional<std::int64_t> ArbiterClient::create_conversation(const std::string& title,
                                                                std::string* err) const {
@@ -141,6 +145,9 @@ std::optional<std::int64_t> ArbiterClient::create_conversation(const std::string
   }
   auto cli = make_client(*parsed);
   nlohmann::json body = {{"title", title}, {"agent_id", agent_}};
+  if (!agent_def_json_.empty()) {
+    body["agent_def"] = nlohmann::json::parse(agent_def_json_);
+  }
   httplib::Headers headers = {
       {"Authorization", "Bearer " + token_},
       {"Content-Type", "application/json"},
