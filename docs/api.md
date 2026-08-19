@@ -5,9 +5,9 @@ Auth: `Authorization: Bearer <device_token>` (Intercom device secret — not an 
 
 ## `GET /health`
 
-Returns JSON readiness for whisper, piper, and Arbiter reachability.
+Returns JSON readiness for whisper, kokoro, and Arbiter reachability.
 
-- `200` when whisper + piper are ready (Arbiter may still be down).
+- `200` when whisper + kokoro are ready (Arbiter may still be down).
 - `503` if speech binaries/models are missing.
 
 ## `POST /v1/utterance`

@@ -3,7 +3,6 @@
 #include "intercom/http_server.hpp"
 #include "intercom/session_store.hpp"
 #include "intercom/stt_whisper.hpp"
-#include "intercom/tts_piper.hpp"
 #include "intercom/tts_kokoro.hpp"
 #include "intercom/turn_pipeline.hpp"
 
@@ -15,7 +14,7 @@ namespace {
 
 void usage(const char* argv0) {
   std::cerr << "Usage: " << argv0 << " --config <path>\n"
-            << "  Intercom — local voice bridge for Arbiter (whisper.cpp + TTS).\n";
+            << "  Intercom — local voice bridge for Arbiter (whisper.cpp + Kokoro).\n";
 }
 
 }  // namespace
@@ -56,12 +55,7 @@ int main(int argc, char** argv) {
   }
 
   auto stt = std::make_shared<intercom::WhisperStt>(config.whisper);
-  std::shared_ptr<intercom::TtsProvider> tts;
-  if (config.tts_provider == "kokoro") {
-    tts = std::make_shared<intercom::KokoroTts>(config.kokoro, config.sample_rate);
-  } else {
-    tts = std::make_shared<intercom::PiperTts>(config.piper, config.sample_rate);
-  }
+  auto tts = std::make_shared<intercom::KokoroTts>(config.kokoro, config.sample_rate);
   auto arbiter = std::make_shared<intercom::ArbiterClient>(
       config.arbiter_base_url, config.arbiter_token, config.agent,
       config.agent_def_json);

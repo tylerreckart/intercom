@@ -1010,7 +1010,7 @@ static void getHealth() {
   if (h.status == 200) {
     Serial.println("health: ok (intercom reachable)");
   } else if (h.status == 503) {
-    Serial.println("health: intercom up, whisper/piper not ready");
+    Serial.println("health: intercom up, whisper/kokoro not ready");
   } else {
     Serial.printf("health: unexpected (check intercom %s:%d)\n", INTERCOM_HOST,
                   INTERCOM_PORT);

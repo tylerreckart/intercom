@@ -32,7 +32,6 @@ add_executable(intercom
   src/main.cpp
   src/config.cpp
   src/stt_whisper.cpp
-  src/tts_piper.cpp
   src/tts_kokoro.cpp
   src/arbiter_client.cpp
   src/session_store.cpp

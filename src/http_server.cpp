@@ -113,7 +113,7 @@ void run_http_server(ServerDeps deps) {
     nlohmann::json j = {
         {"ok", stt_ok && tts_ok},
         {"whisper", {{"ready", stt_ok}, {"detail", stt_detail}}},
-        {"piper", {{"ready", tts_ok}, {"detail", tts_detail}}},
+        {"kokoro", {{"ready", tts_ok}, {"detail", tts_detail}}},
         {"arbiter", {{"reachable", arb_ok}, {"detail", arb_detail}}},
     };
     res.status = (stt_ok && tts_ok) ? 200 : 503;

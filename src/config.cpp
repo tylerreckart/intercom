@@ -104,7 +104,6 @@ Config Config::load(const std::string& path) {
   c.sample_rate = require_int(j, "sample_rate", c.sample_rate);
   c.channels = require_int(j, "channels", c.channels);
   c.fast_path = require_bool(j, "fast_path", c.fast_path);
-  c.tts_provider = require_string(j, "tts_provider", c.tts_provider);
 
   if (j.contains("devices") && j["devices"].is_object()) {
     for (auto it = j["devices"].begin(); it != j["devices"].end(); ++it) {
@@ -120,20 +119,6 @@ Config Config::load(const std::string& path) {
     c.whisper.model = expand_home(require_string(w, "model", c.whisper.model));
     c.whisper.timeout_seconds = require_int(w, "timeout_seconds", c.whisper.timeout_seconds);
     c.whisper.language = require_string(w, "language", c.whisper.language);
-  }
-
-  if (j.contains("piper") && j["piper"].is_object()) {
-    const auto& p = j["piper"];
-    c.piper.binary = require_string(p, "binary", c.piper.binary);
-    c.piper.model = expand_home(require_string(p, "model", c.piper.model));
-    c.piper.timeout_seconds = require_int(p, "timeout_seconds", c.piper.timeout_seconds);
-    c.piper.native_sample_rate =
-        require_int(p, "native_sample_rate", c.piper.native_sample_rate);
-    c.piper.length_scale = require_number(p, "length_scale", c.piper.length_scale);
-    c.piper.noise_scale = require_number(p, "noise_scale", c.piper.noise_scale);
-    c.piper.noise_w = require_number(p, "noise_w", c.piper.noise_w);
-    c.piper.sentence_silence =
-        require_number(p, "sentence_silence", c.piper.sentence_silence);
   }
 
   if (j.contains("kokoro") && j["kokoro"].is_object()) {

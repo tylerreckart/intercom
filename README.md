@@ -1,6 +1,6 @@
 # Intercom
 
-Local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Piper**/Kokoro TTS, and Arbiter stays text + SSE in the middle.
+Local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Kokoro** TTS, and Arbiter stays text + SSE in the middle.
 
 ```
 ESP32  --HTTP PTT PCM-->  Intercom  --text/SSE-->  arbiter --api
@@ -24,14 +24,14 @@ Requires C++20, CMake 3.20+, SQLite3, Threads. Fetches cpp-httplib and nlohmann/
 
 ```bash
 cp config/intercom.example.json intercom.json
-# set arbiter_token, paths to whisper-cli + model, piper/kokoro + voice
+# set arbiter_token, paths to whisper-cli + model, kokoro binary + voice
 ./build/intercom --config intercom.json
 ```
 
 Install speech tools separately (not vendored):
 
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp) → `whisper-cli` + `ggml-base.en.bin`
-- [Piper](https://github.com/rhasspy/piper) → `piper` + an `.onnx` voice (e.g. `en_US-lessac-medium`)
+- [Kokoro](https://github.com/hexgrad/kokoro) → `kokoro-tts` + ONNX model and voices bundle
 
 ## Quick test (no mic)
 

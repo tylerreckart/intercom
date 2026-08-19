@@ -8,7 +8,6 @@
 namespace intercom {
 
 class WhisperStt;
-class PiperTts;
 
 struct ServerDeps {
   Config config;

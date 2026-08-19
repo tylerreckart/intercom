@@ -634,7 +634,7 @@ std::string speak_symbols(std::string_view s) {
       continue;
     }
 
-    // Drop leftover markup so Piper never names it.
+    // Drop leftover markup so TTS never names it.
     if (s[i] == '\\' || s[i] == '{' || s[i] == '}' || s[i] == '_' || s[i] == '$' ||
         s[i] == '~' || s[i] == '`' || s[i] == '#') {
       ++i;

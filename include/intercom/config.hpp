@@ -12,18 +12,6 @@ struct WhisperConfig {
   std::string language = "en";
 };
 
-struct PiperConfig {
-  std::string binary = "piper";
-  std::string model;
-  int timeout_seconds = 60;
-  int native_sample_rate = 22050;
-  // >1 slows phonemes (smoother HAL). <1 is snappier / choppier.
-  double length_scale = 1.18;
-  double noise_scale = 0.45;
-  double noise_w = 0.5;
-  double sentence_silence = 0.22;
-};
-
 struct KokoroConfig {
   std::string binary = "kokoro-tts";
   std::string voice = "af_heart";
@@ -48,9 +36,7 @@ struct Config {
   int sample_rate = 16000;
   int channels = 1;
   bool fast_path = true;
-  std::string tts_provider = "piper";
   WhisperConfig whisper;
-  PiperConfig piper;
   KokoroConfig kokoro;
 
   static Config load(const std::string& path);

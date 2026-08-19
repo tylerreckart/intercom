@@ -5,7 +5,7 @@
 
 namespace intercom {
 
-// Rewrite assistant text so Piper speaks it the way a person would say it:
+// Rewrite assistant text so TTS speaks it the way a person would say it:
 // no markdown, no LaTeX, no symbol names like "backslash" or "asterisk".
 std::string to_speakable(std::string_view text);
 
