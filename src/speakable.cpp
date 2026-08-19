@@ -1,11 +1,11 @@
-#include "alfred/speakable.hpp"
+#include "intercom/speakable.hpp"
 
 #include <cctype>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 bool is_alnum(char c) {
@@ -671,4 +671,4 @@ std::string voice_user_message(std::string_view transcript) {
   return msg;
 }
 
-}  // namespace alfred
+}  // namespace intercom

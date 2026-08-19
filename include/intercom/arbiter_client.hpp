@@ -5,7 +5,7 @@
 #include <optional>
 #include <string>
 
-namespace alfred {
+namespace intercom {
 
 struct ArbiterStreamCallbacks {
   // Fires once when request_received yields a request_id.
@@ -45,4 +45,4 @@ class ArbiterClient {
   std::string agent_def_json_;
 };
 
-}  // namespace alfred
+}  // namespace intercom

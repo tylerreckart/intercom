@@ -1,10 +1,10 @@
-#include "alfred/turn_pipeline.hpp"
-#include "alfred/speakable.hpp"
-#include "alfred/util.hpp"
+#include "intercom/turn_pipeline.hpp"
+#include "intercom/speakable.hpp"
+#include "intercom/util.hpp"
 
 #include <chrono>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 std::int64_t now_unix() {
@@ -54,7 +54,7 @@ std::int64_t TurnPipeline::ensure_conversation(const std::string& device_id, std
       return existing->conversation_id;
     }
   }
-  auto id = arbiter_->create_conversation("alfred:" + device_id, err);
+  auto id = arbiter_->create_conversation("intercom:" + device_id, err);
   if (!id || *id <= 0) {
     if (err && err->empty()) *err = "conversation create failed";
     return 0;
@@ -224,4 +224,4 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   return finish(result);
 }
 
-}  // namespace alfred
+}  // namespace intercom

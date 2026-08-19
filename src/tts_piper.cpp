@@ -1,5 +1,5 @@
-#include "alfred/tts_piper.hpp"
-#include "alfred/util.hpp"
+#include "intercom/tts_piper.hpp"
+#include "intercom/util.hpp"
 
 #include <cstdio>
 #include <cmath>
@@ -8,7 +8,7 @@
 #include <sstream>
 #include <sys/wait.h>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 std::string shell_quote(const std::string& s) {
@@ -79,8 +79,8 @@ bool PiperTts::synthesize(const std::string& text,
 
   const std::string id = make_turn_id();
   const auto dir = std::filesystem::temp_directory_path();
-  const std::string text_path = (dir / ("alfred-tts-" + id + ".txt")).string();
-  const std::string wav_path = (dir / ("alfred-tts-" + id + ".wav")).string();
+  const std::string text_path = (dir / ("intercom-tts-" + id + ".txt")).string();
+  const std::string wav_path = (dir / ("intercom-tts-" + id + ".wav")).string();
 
   if (!write_text_file(text_path, text)) {
     if (err) *err = "failed to write piper text temp file";
@@ -152,4 +152,4 @@ bool PiperTts::synthesize(const std::string& text,
   return true;
 }
 
-}  // namespace alfred
+}  // namespace intercom

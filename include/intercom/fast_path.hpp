@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-namespace alfred {
+namespace intercom {
 
 struct FastPathResult {
   std::string reply;
@@ -20,4 +20,4 @@ class FastPath {
   bool enabled_;
 };
 
-}  // namespace alfred
+}  // namespace intercom

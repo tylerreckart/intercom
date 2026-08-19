@@ -1,11 +1,11 @@
 #pragma once
 
-#include "alfred/arbiter_client.hpp"
-#include "alfred/config.hpp"
-#include "alfred/fast_path.hpp"
-#include "alfred/session_store.hpp"
-#include "alfred/stt.hpp"
-#include "alfred/tts.hpp"
+#include "intercom/arbiter_client.hpp"
+#include "intercom/config.hpp"
+#include "intercom/fast_path.hpp"
+#include "intercom/session_store.hpp"
+#include "intercom/stt.hpp"
+#include "intercom/tts.hpp"
 
 #include <atomic>
 #include <cstdint>
@@ -16,7 +16,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace alfred {
+namespace intercom {
 
 // Sink for reply PCM — HTTP chunked body today; WebSocket binary frames later.
 class AudioSink {
@@ -91,4 +91,4 @@ class TurnPipeline {
   std::unordered_map<std::string, std::shared_ptr<TurnHandle>> turns_;
 };
 
-}  // namespace alfred
+}  // namespace intercom

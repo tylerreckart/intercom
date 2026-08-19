@@ -1,4 +1,4 @@
-#include "alfred/util.hpp"
+#include "intercom/util.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 #pragma pack(push, 1)
@@ -235,4 +235,4 @@ std::vector<std::string> flush_sentences(std::string& buf, bool final_flush) {
   return out;
 }
 
-}  // namespace alfred
+}  // namespace intercom

@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace alfred {
+namespace intercom {
 
 struct WhisperConfig {
   std::string binary = "whisper-cli";
@@ -39,12 +39,12 @@ struct Config {
   std::unordered_map<std::string, std::string> devices;  // device_id -> token
   std::string arbiter_base_url = "http://127.0.0.1:8080";
   std::string arbiter_token;
-  std::string agent = "alfred";
+  std::string agent = "arthur";
   // Inline agent constitution snapshotted into Arbiter on conversation create.
-  // Empty → {config_dir}/alfred.agent.json when agent != "index".
+  // Empty → {config_dir}/arthur.agent.json when agent != "index".
   std::string agent_def_path;
   std::string agent_def_json;
-  std::string session_db = "~/.alfred/sessions.db";
+  std::string session_db = "~/.intercom/sessions.db";
   int sample_rate = 16000;
   int channels = 1;
   bool fast_path = true;
@@ -59,4 +59,4 @@ struct Config {
                         const std::string& bearer_token) const;
 };
 
-}  // namespace alfred
+}  // namespace intercom

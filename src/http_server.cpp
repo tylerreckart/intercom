@@ -1,5 +1,5 @@
-#include "alfred/http_server.hpp"
-#include "alfred/util.hpp"
+#include "intercom/http_server.hpp"
+#include "intercom/util.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -9,7 +9,7 @@
 #include <string_view>
 #include <vector>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 std::string bearer_token(const httplib::Request& req) {
@@ -74,9 +74,9 @@ void send_turn_response(httplib::Response& res, const TurnResult& result,
   const bool failed = !result.ok || !result.error.empty() || pcm.empty();
   if (failed && pcm.empty()) {
     const std::string err = result.error.empty() ? "empty tts audio" : result.error;
-    std::cerr << "alfred turn error: " << err << std::endl;
+    std::cerr << "intercom turn error: " << err << std::endl;
     res.status = 502;
-    res.set_header("X-Alfred-Error", header_safe(err));
+    res.set_header("X-Intercom-Error", header_safe(err));
     nlohmann::json j = {
         {"error", err},
         {"ok", false},
@@ -88,8 +88,8 @@ void send_turn_response(httplib::Response& res, const TurnResult& result,
   }
 
   if (!result.error.empty()) {
-    std::cerr << "alfred turn warning: " << result.error << std::endl;
-    res.set_header("X-Alfred-Error", header_safe(result.error));
+    std::cerr << "intercom turn warning: " << result.error << std::endl;
+    res.set_header("X-Intercom-Error", header_safe(result.error));
   }
 
   const std::string ctype =
@@ -188,13 +188,13 @@ void run_http_server(ServerDeps deps) {
     if (transcript.empty()) {
       res.status = 502;
       const std::string err = stt_err.empty() ? "stt failed" : stt_err;
-      res.set_header("X-Alfred-Error", header_safe(err));
+      res.set_header("X-Intercom-Error", header_safe(err));
       nlohmann::json j = {{"error", err}};
       res.set_content(j.dump(), "application/json");
       return;
     }
 
-    const std::string turn_id = alfred::make_turn_id();
+    const std::string turn_id = intercom::make_turn_id();
     CollectingSink audio;
     const TurnResult result = deps.pipeline->run_text_utterance(
         device_id, transcript, audio, turn_id);
@@ -228,7 +228,7 @@ void run_http_server(ServerDeps deps) {
       return;
     }
 
-    const std::string turn_id = alfred::make_turn_id();
+    const std::string turn_id = intercom::make_turn_id();
     CollectingSink audio;
     const TurnResult result = deps.pipeline->run_text_utterance(
         device_id, transcript, audio, turn_id);
@@ -236,12 +236,12 @@ void run_http_server(ServerDeps deps) {
                        device_id);
   });
 
-  std::cout << "alfred listening on http://" << deps.config.listen_host << ":"
+  std::cout << "intercom listening on http://" << deps.config.listen_host << ":"
             << deps.config.listen_port << std::endl;
   if (!svr.listen(deps.config.listen_host.c_str(), deps.config.listen_port)) {
-    std::cerr << "alfred failed to bind " << deps.config.listen_host << ":"
+    std::cerr << "intercom failed to bind " << deps.config.listen_host << ":"
               << deps.config.listen_port << std::endl;
   }
 }
 
-}  // namespace alfred
+}  // namespace intercom

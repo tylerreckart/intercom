@@ -1,4 +1,4 @@
-#include "alfred/arbiter_client.hpp"
+#include "intercom/arbiter_client.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -7,7 +7,7 @@
 #include <optional>
 #include <sstream>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 struct ParsedUrl {
@@ -298,4 +298,4 @@ bool ArbiterClient::health_reachable(std::string* detail) const {
   return res->status == 200;
 }
 
-}  // namespace alfred
+}  // namespace intercom

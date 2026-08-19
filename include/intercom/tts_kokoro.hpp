@@ -1,9 +1,9 @@
 #pragma once
 
-#include "alfred/config.hpp"
-#include "alfred/tts.hpp"
+#include "intercom/config.hpp"
+#include "intercom/tts.hpp"
 
-namespace alfred {
+namespace intercom {
 
 class KokoroTts : public TtsProvider {
  public:
@@ -20,5 +20,5 @@ class KokoroTts : public TtsProvider {
   int target_sample_rate_;
 };
 
-}  // namespace alfred
+}  // namespace intercom
 

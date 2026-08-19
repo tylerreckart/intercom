@@ -1,11 +1,11 @@
 #pragma once
 
-#include "alfred/turn_pipeline.hpp"
+#include "intercom/turn_pipeline.hpp"
 
 #include <memory>
 #include <string>
 
-namespace alfred {
+namespace intercom {
 
 class WhisperStt;
 class PiperTts;
@@ -17,4 +17,4 @@ struct ServerDeps {
 
 void run_http_server(ServerDeps deps);
 
-}  // namespace alfred
+}  // namespace intercom

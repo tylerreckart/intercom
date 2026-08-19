@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 
-namespace alfred {
+namespace intercom {
 
 // Rewrite assistant text so Piper speaks it the way a person would say it:
 // no markdown, no LaTeX, no symbol names like "backslash" or "asterisk".
@@ -13,4 +13,4 @@ std::string to_speakable(std::string_view text);
 // that the reply will be read aloud.
 std::string voice_user_message(std::string_view transcript);
 
-}  // namespace alfred
+}  // namespace intercom

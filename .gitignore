@@ -6,7 +6,7 @@
 *.bin
 *.onnx
 *.onnx.json
-alfred.json
+intercom.json
 *.wav
 *.pcm
 .DS_Store

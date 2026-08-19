@@ -1,13 +1,15 @@
-# Alfred
+# Intercom
 
-Local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Alfred runs **whisper.cpp** STT + **Piper** TTS, and Arbiter stays text + SSE in the middle.
+Local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Piper**/Kokoro TTS, and Arbiter stays text + SSE in the middle.
 
 ```
-ESP32  --HTTP PTT PCM-->  Alfred  --text/SSE-->  arbiter --api
-ESP32  <--chunked PCM---  Alfred  <--text------/
+ESP32  --HTTP PTT PCM-->  Intercom  --text/SSE-->  arbiter --api
+ESP32  <--chunked PCM---  Intercom  <--text------/
 ```
 
-Colocate Alfred on the same host as `arbiter --api` (default `http://127.0.0.1:8080`). Device tokens never see the Arbiter bearer.
+Colocate Intercom on the same host as `arbiter --api` (default `http://127.0.0.1:8080`). Device tokens never see the Arbiter bearer.
+
+The default agent is **Arthur** — a British voice assistant with full Arbiter tool access (`config/arthur.agent.json`).
 
 ## Build
 
@@ -21,9 +23,9 @@ Requires C++20, CMake 3.20+, SQLite3, Threads. Fetches cpp-httplib and nlohmann/
 ## Configure
 
 ```bash
-cp config/alfred.example.json alfred.json
-# set arbiter_token, paths to whisper-cli + model, piper + voice
-./build/alfred --config alfred.json
+cp config/intercom.example.json intercom.json
+# set arbiter_token, paths to whisper-cli + model, piper/kokoro + voice
+./build/intercom --config intercom.json
 ```
 
 Install speech tools separately (not vendored):

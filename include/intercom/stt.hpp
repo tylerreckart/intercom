@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace alfred {
+namespace intercom {
 
 // Speech-to-text provider. Transport-agnostic (HTTP PTT today, WS later).
 class SttProvider {
@@ -20,4 +20,4 @@ class SttProvider {
   virtual bool ready(std::string* detail) const = 0;
 };
 
-}  // namespace alfred
+}  // namespace intercom

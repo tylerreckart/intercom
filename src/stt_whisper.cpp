@@ -1,5 +1,5 @@
-#include "alfred/stt_whisper.hpp"
-#include "alfred/util.hpp"
+#include "intercom/stt_whisper.hpp"
+#include "intercom/util.hpp"
 
 #include <array>
 #include <cstdio>
@@ -7,7 +7,7 @@
 #include <sstream>
 #include <sys/wait.h>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 std::string run_cmd_capture(const std::string& cmd, int* exit_code) {
@@ -76,7 +76,7 @@ std::string WhisperStt::transcribe(const std::vector<std::uint8_t>& pcm,
   }
 
   const auto tmp = std::filesystem::temp_directory_path() /
-                   ("alfred-stt-" + make_turn_id() + ".wav");
+                   ("intercom-stt-" + make_turn_id() + ".wav");
   const std::string wav_path = tmp.string();
   if (!write_wav_s16le(wav_path, pcm, sample_rate, channels)) {
     if (err) *err = "failed to write temp wav";
@@ -122,4 +122,4 @@ std::string WhisperStt::transcribe(const std::vector<std::uint8_t>& pcm,
   return transcript;
 }
 
-}  // namespace alfred
+}  // namespace intercom

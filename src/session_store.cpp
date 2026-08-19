@@ -1,11 +1,11 @@
-#include "alfred/session_store.hpp"
-#include "alfred/util.hpp"
+#include "intercom/session_store.hpp"
+#include "intercom/util.hpp"
 
 #include <chrono>
 #include <filesystem>
 #include <sqlite3.h>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 std::int64_t now_unix() {
@@ -116,4 +116,4 @@ bool SessionStore::upsert(const DeviceSession& session, std::string* err) {
   return true;
 }
 
-}  // namespace alfred
+}  // namespace intercom

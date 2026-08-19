@@ -6,7 +6,7 @@
 
 struct sqlite3;
 
-namespace alfred {
+namespace intercom {
 
 struct DeviceSession {
   std::string device_id;
@@ -33,4 +33,4 @@ class SessionStore {
   sqlite3* db_ = nullptr;
 };
 
-}  // namespace alfred
+}  // namespace intercom

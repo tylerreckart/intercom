@@ -1,21 +1,21 @@
 # Device PCM contract
 
-Target hardware: **ESP32-S3 with PSRAM** (e.g. Arduino Nano ESP32) + I2S mic (INMP441) + I2S amp (MAX98357A). Alfred runs on the server; the MCU is a thin audio endpoint.
+Target hardware: **ESP32-S3 with PSRAM** (e.g. Arduino Nano ESP32) + I2S mic (INMP441) + I2S amp (MAX98357A). Intercom runs on the server; the MCU is a thin audio endpoint.
 
 ## Audio format
 
 | Direction | Format |
 |-----------|--------|
-| Mic → Alfred | Mono PCM s16le, **16 kHz**, push-to-talk HTTP body |
-| Alfred → speaker | Mono PCM s16le, **16 kHz**, chunked HTTP response |
+| Mic → Intercom | Mono PCM s16le, **16 kHz**, push-to-talk HTTP body |
+| Intercom → speaker | Mono PCM s16le, **16 kHz**, chunked HTTP response |
 
 Content-Type: `audio/L16; rate=16000; channels=1`
 
 ## Session model
 
 1. Hold a stable `X-Device-Id` (e.g. MAC or flashed UUID).
-2. Use the Alfred device bearer (not Arbiter’s token).
-3. Alfred maps device → Arbiter `conversation_id` in SQLite (`session_db`).
+2. Use the Intercom device bearer (not Arbiter’s token).
+3. Intercom maps device → Arbiter `conversation_id` in SQLite (`session_db`).
 4. Same device keeps memory/history across boots of the MCU.
 
 ## Push-to-talk flow
@@ -28,10 +28,10 @@ Content-Type: `audio/L16; rate=16000; channels=1`
 
 ## Colocation
 
-Run Alfred beside `arbiter --api` on the same host:
+Run Intercom beside `arbiter --api` on the same host:
 
 - `arbiter_base_url`: `http://127.0.0.1:8080`
-- Alfred listen: `127.0.0.1:8090` (put TLS/auth on a reverse proxy for LAN/WAN devices)
+- Intercom listen: `127.0.0.1:8090` (put TLS/auth on a reverse proxy for LAN/WAN devices)
 
 ## Generating a test PCM file
 
@@ -51,4 +51,4 @@ ffplay -f s16le -ar 16000 -ac 1 reply.pcm
 
 ## WebSocket (v1.1)
 
-Not implemented. Future duplex should reuse `TurnPipeline` / `AudioSink` and stream mic frames up while Alfred streams PCM down on one connection.
+Not implemented. Future duplex should reuse `TurnPipeline` / `AudioSink` and stream mic frames up while Intercom streams PCM down on one connection.

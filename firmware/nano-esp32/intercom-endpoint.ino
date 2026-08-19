@@ -17,11 +17,11 @@ struct HttpHeaders {
   int contentLength = -1;
   String turnId;
   String transcript;
-  String alfredError;
+  String intercomError;
   bool fastPath = false;
 };
 
-// Thin PCM endpoint for Alfred (docs/device.md):
+// Thin PCM endpoint for Intercom (docs/device.md):
 // hold PTT -> record 16 kHz s16le -> POST /v1/utterance -> play chunked PCM.
 // Serial (idle): tone | health | ping
 
@@ -668,8 +668,8 @@ static bool readHeaders(WiFiClient &c, HttpHeaders &h, uint32_t timeoutMs) {
       h.turnId = value;
     } else if (name == "x-transcript") {
       h.transcript = value;
-    } else if (name == "x-alfred-error") {
-      h.alfredError = value;
+    } else if (name == "x-intercom-error") {
+      h.intercomError = value;
     } else if (name == "x-fast-path") {
       h.fastPath = value == "1" || value == "true";
     }
@@ -773,15 +773,15 @@ static PlayResult playUntilClose(WiFiClient &c) {
 }
 
 static void writeAuthHeaders(WiFiClient &c) {
-  c.printf("Host: %s:%d\r\n", ALFRED_HOST, ALFRED_PORT);
-  c.printf("Authorization: Bearer %s\r\n", ALFRED_TOKEN);
+  c.printf("Host: %s:%d\r\n", INTERCOM_HOST, INTERCOM_PORT);
+  c.printf("Authorization: Bearer %s\r\n", INTERCOM_TOKEN);
   c.printf("X-Device-Id: %s\r\n", gDeviceId.c_str());
 }
 
-static bool connectAlfred(WiFiClient &c) {
+static bool connectIntercom(WiFiClient &c) {
   c.setTimeout(HEADER_TIMEOUT_MS);
-  if (!c.connect(ALFRED_HOST, ALFRED_PORT, HTTP_TIMEOUT_MS)) {
-    Serial.printf("connect failed %s:%d\n", ALFRED_HOST, ALFRED_PORT);
+  if (!c.connect(INTERCOM_HOST, INTERCOM_PORT, HTTP_TIMEOUT_MS)) {
+    Serial.printf("connect failed %s:%d\n", INTERCOM_HOST, INTERCOM_PORT);
     return false;
   }
   return true;
@@ -825,8 +825,8 @@ static void printHttpMeta(const HttpHeaders &h) {
   if (h.transcript.length()) {
     Serial.printf("transcript: %s\n", h.transcript.c_str());
   }
-  if (h.alfredError.length()) {
-    Serial.printf("error: %s\n", h.alfredError.c_str());
+  if (h.intercomError.length()) {
+    Serial.printf("error: %s\n", h.intercomError.c_str());
   }
 }
 
@@ -883,7 +883,7 @@ static void dumpHttpBody(WiFiClient &c, const HttpHeaders &h) {
 static void cancelTurn(const String &turnId) {
   if (turnId.isEmpty()) return;
   WiFiClient c;
-  if (!connectAlfred(c)) return;
+  if (!connectIntercom(c)) return;
   c.printf("POST /v1/turns/%s/cancel HTTP/1.1\r\n", turnId.c_str());
   writeAuthHeaders(c);
   c.print("Content-Length: 0\r\nConnection: close\r\n\r\n");
@@ -895,7 +895,7 @@ static void cancelTurn(const String &turnId) {
 
 static PlayResult postUtterance(const int16_t *pcm, size_t samples) {
   WiFiClient c;
-  if (!connectAlfred(c)) return PlayResult::Error;
+  if (!connectIntercom(c)) return PlayResult::Error;
 
   const size_t bytes = samples * sizeof(int16_t);
   c.print("POST /v1/utterance HTTP/1.1\r\n");
@@ -922,7 +922,7 @@ static PlayResult postUtterance(const int16_t *pcm, size_t samples) {
   digitalWrite(LED_BUILTIN, HIGH);
   HttpHeaders h;
   if (!readHeaders(c, h, HEADER_TIMEOUT_MS)) {
-    Serial.println("no response headers (is alfred.json listen_host reachable?)");
+    Serial.println("no response headers (is intercom.json listen_host reachable?)");
     digitalWrite(LED_BUILTIN, LOW);
     c.stop();
     return PlayResult::Error;
@@ -962,7 +962,7 @@ static String jsonEscape(const String &s) {
 
 static PlayResult postText(const String &text) {
   WiFiClient c;
-  if (!connectAlfred(c)) return PlayResult::Error;
+  if (!connectIntercom(c)) return PlayResult::Error;
   String body = String("{\"text\":\"") + jsonEscape(text) + "\"}";
   c.print("POST /v1/utterance/text HTTP/1.1\r\n");
   writeAuthHeaders(c);
@@ -991,9 +991,9 @@ static PlayResult postText(const String &text) {
 
 static void getHealth() {
   WiFiClient c;
-  if (!connectAlfred(c)) return;
+  if (!connectIntercom(c)) return;
   c.print("GET /health HTTP/1.1\r\n");
-  c.printf("Host: %s:%d\r\n", ALFRED_HOST, ALFRED_PORT);
+  c.printf("Host: %s:%d\r\n", INTERCOM_HOST, INTERCOM_PORT);
   c.print("Connection: close\r\n\r\n");
   c.flush();
   HttpHeaders h;
@@ -1008,12 +1008,12 @@ static void getHealth() {
     Serial.println(line);
   }
   if (h.status == 200) {
-    Serial.println("health: ok (alfred reachable)");
+    Serial.println("health: ok (intercom reachable)");
   } else if (h.status == 503) {
-    Serial.println("health: alfred up, whisper/piper not ready");
+    Serial.println("health: intercom up, whisper/piper not ready");
   } else {
-    Serial.printf("health: unexpected (check alfred %s:%d)\n", ALFRED_HOST,
-                  ALFRED_PORT);
+    Serial.printf("health: unexpected (check intercom %s:%d)\n", INTERCOM_HOST,
+                  INTERCOM_PORT);
   }
   c.stop();
 }
@@ -1190,7 +1190,7 @@ void setup() {
 
   Serial.begin(57600);
   delay(500);
-  Serial.println("\nalfred nano-esp32 endpoint");
+  Serial.println("\nintercom nano-esp32 endpoint");
   Serial.println(FIRMWARE_CONFIG_TAG);
   Serial.printf("reset: %s\n", resetReasonStr());
   if (pttHeld()) {
@@ -1204,8 +1204,8 @@ void setup() {
 
   connectWifi();
 
-  if (String(ALFRED_DEVICE_ID).length()) {
-    gDeviceId = ALFRED_DEVICE_ID;
+  if (String(INTERCOM_DEVICE_ID).length()) {
+    gDeviceId = INTERCOM_DEVICE_ID;
   } else {
     gDeviceId = WiFi.macAddress();
     gDeviceId.replace(":", "");
@@ -1213,7 +1213,7 @@ void setup() {
     gDeviceId = "nano-" + gDeviceId;
   }
   Serial.printf("device-id %s\n", gDeviceId.c_str());
-  Serial.printf("alfred %s:%d\n", ALFRED_HOST, ALFRED_PORT);
+  Serial.printf("intercom %s:%d\n", INTERCOM_HOST, INTERCOM_PORT);
   Serial.printf("volume adc=%d gain=%d\n", analogRead(PIN_VOLUME), gVolQ15);
   Serial.printf("spk i2s gpio bck=%d ws=%d din=%d sd=%d\n", i2sGpio(PIN_SPK_BCLK),
                 i2sGpio(PIN_SPK_WS), i2sGpio(PIN_SPK_DIN), i2sGpio(PIN_AMP_SD));
@@ -1221,7 +1221,7 @@ void setup() {
                 (int)MIC_LEFT_SLOT, i2sGpio(PIN_MIC_BCLK), i2sGpio(PIN_MIC_WS),
                 i2sGpio(PIN_MIC_SD));
   if (gVolQ15 < 512) {
-    Serial.println("volume at minimum — turn A0 pot CW for Alfred playback");
+    Serial.println("volume at minimum — turn A0 pot CW for playback");
     Serial.println("(tone/beep ignore pot; use beep to test speaker)");
   }
   Serial.println("serial: say <text> | ping | health | tone");

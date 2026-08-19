@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(alfred VERSION 0.1.0 LANGUAGES CXX)
+project(intercom VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,7 +28,7 @@ FetchContent_MakeAvailable(httplib)
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
 
-add_executable(alfred
+add_executable(intercom
   src/main.cpp
   src/config.cpp
   src/stt_whisper.cpp
@@ -43,11 +43,11 @@ add_executable(alfred
   src/speakable.cpp
 )
 
-target_include_directories(alfred PRIVATE
+target_include_directories(intercom PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(alfred PRIVATE
+target_link_libraries(intercom PRIVATE
   nlohmann_json::nlohmann_json
   httplib::httplib
   SQLite3::SQLite3
@@ -55,8 +55,8 @@ target_link_libraries(alfred PRIVATE
 )
 
 if(APPLE)
-  target_compile_definitions(alfred PRIVATE CPPHTTPLIB_USE_POLL)
+  target_compile_definitions(intercom PRIVATE CPPHTTPLIB_USE_POLL)
 endif()
 
-install(TARGETS alfred RUNTIME DESTINATION bin)
-install(FILES config/alfred.example.json config/alfred.agent.json DESTINATION share/alfred)
+install(TARGETS intercom RUNTIME DESTINATION bin)
+install(FILES config/intercom.example.json config/arthur.agent.json DESTINATION share/intercom)

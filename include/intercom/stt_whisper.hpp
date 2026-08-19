@@ -1,11 +1,11 @@
 #pragma once
 
-#include "alfred/config.hpp"
-#include "alfred/stt.hpp"
+#include "intercom/config.hpp"
+#include "intercom/stt.hpp"
 
 #include <string>
 
-namespace alfred {
+namespace intercom {
 
 class WhisperStt : public SttProvider {
  public:
@@ -22,4 +22,4 @@ class WhisperStt : public SttProvider {
   WhisperConfig cfg_;
 };
 
-}  // namespace alfred
+}  // namespace intercom

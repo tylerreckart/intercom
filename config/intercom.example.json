@@ -1,0 +1,38 @@
+{
+  "listen_host": "0.0.0.0",
+  "listen_port": 8090,
+  "device_token": "dev-device-secret-change-me",
+  "devices": {},
+  "arbiter_base_url": "http://127.0.0.1:8080",
+  "arbiter_token": "atr_REPLACE_ME",
+  "agent": "arthur",
+  "agent_def": "arthur.agent.json",
+  "session_db": "~/.intercom/sessions.db",
+  "sample_rate": 24000,
+  "channels": 1,
+  "fast_path": true,
+  "tts_provider": "kokoro",
+  "kokoro": {
+    "binary": "~/.intercom/venv-kokoro/bin/kokoro-tts",
+    "voice": "af_heart",
+    "speed": 1.0,
+    "model": "~/.intercom/models/kokoro/kokoro-v1.0.onnx",
+    "voices": "~/.intercom/models/kokoro/voices-v1.0.bin"
+  },
+  "whisper": {
+    "binary": "whisper-cli",
+    "model": "~/.intercom/models/ggml-base.en.bin",
+    "timeout_seconds": 120,
+    "language": "en"
+  },
+  "piper": {
+    "binary": "piper",
+    "model": "~/.intercom/models/en_US-lessac-medium.onnx",
+    "timeout_seconds": 60,
+    "native_sample_rate": 22050,
+    "length_scale": 1.18,
+    "noise_scale": 0.45,
+    "noise_w": 0.5,
+    "sentence_silence": 0.22
+  }
+}

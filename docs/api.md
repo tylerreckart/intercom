@@ -1,7 +1,7 @@
-# Alfred HTTP API
+# Intercom HTTP API
 
 Base URL default: `http://127.0.0.1:8090`  
-Auth: `Authorization: Bearer <device_token>` (Alfred device secret — not an Arbiter `atr_` token).
+Auth: `Authorization: Bearer <device_token>` (Intercom device secret — not an Arbiter `atr_` token).
 
 ## `GET /health`
 
@@ -31,10 +31,11 @@ Body: raw mono PCM **s16le** (default 16 kHz).
 
 | Header | Description |
 |--------|-------------|
-| `X-Turn-Id` | Alfred turn id (use for cancel) |
+| `X-Turn-Id` | Intercom turn id (use for cancel) |
 | `X-Transcript` | STT text |
 | `X-Device-Id` | Echo |
 | `X-Conversation-Id` | Present when a prior session exists |
+| `X-Intercom-Error` | Error detail when present |
 
 Errors before streaming are JSON (`401`, `400`, `502`).
 
@@ -73,9 +74,11 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 
 ## Arbiter mapping
 
-| Alfred | Arbiter |
+| Intercom | Arbiter |
 |--------|---------|
 | First utterance per device | `POST /v1/conversations` (`agent_id` + `agent_def` from config) |
 | Each turn | `POST /v1/conversations/:id/messages` + SSE |
 | Cancel | `POST /v1/requests/:id/cancel` |
-| Idempotency-Key | Alfred `turn_id` |
+| Idempotency-Key | Intercom `turn_id` |
+
+Default agent: **Arthur** (`config/arthur.agent.json`).

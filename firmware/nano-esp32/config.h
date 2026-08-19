@@ -1,7 +1,7 @@
 #pragma once
 
-// Copy this file's WIFI_* / ALFRED_TOKEN values, or create secrets.h next to
-// the sketch (gitignored) with #define WIFI_SSID, WIFI_PASSWORD, ALFRED_TOKEN.
+// Copy this file's WIFI_* / INTERCOM_TOKEN values, or create secrets.h next to
+// the sketch (gitignored) with #define WIFI_SSID, WIFI_PASSWORD, INTERCOM_TOKEN.
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -14,19 +14,19 @@
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 #endif
 
-#ifndef ALFRED_HOST
-// LAN IP of the machine running Alfred — not 127.0.0.1 (that is the ESP itself).
-#define ALFRED_HOST "192.168.86.40"
+#ifndef INTERCOM_HOST
+// LAN IP of the machine running Intercom — not 127.0.0.1 (that is the ESP itself).
+#define INTERCOM_HOST "192.168.86.40"
 #endif
-#define FIRMWARE_CONFIG_TAG "alfred-lan-v2"
-#ifndef ALFRED_PORT
-#define ALFRED_PORT 8090
+#define FIRMWARE_CONFIG_TAG "intercom-lan-v1"
+#ifndef INTERCOM_PORT
+#define INTERCOM_PORT 8090
 #endif
-#ifndef ALFRED_TOKEN
-#define ALFRED_TOKEN "dev-device-secret-change-me"
+#ifndef INTERCOM_TOKEN
+#define INTERCOM_TOKEN "dev-device-secret-change-me"
 #endif
-#ifndef ALFRED_DEVICE_ID
-#define ALFRED_DEVICE_ID ""
+#ifndef INTERCOM_DEVICE_ID
+#define INTERCOM_DEVICE_ID ""
 #endif
 
 #define SAMPLE_RATE 24000

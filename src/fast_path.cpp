@@ -1,11 +1,11 @@
-#include "alfred/fast_path.hpp"
-#include "alfred/util.hpp"
+#include "intercom/fast_path.hpp"
+#include "intercom/util.hpp"
 
 #include <chrono>
 #include <ctime>
 #include <sstream>
 
-namespace alfred {
+namespace intercom {
 
 FastPath::FastPath(bool enabled) : enabled_(enabled) {}
 
@@ -14,12 +14,12 @@ std::optional<FastPathResult> FastPath::try_handle(const std::string& transcript
   const std::string t = to_lower(trim(transcript));
   if (t.empty()) return std::nullopt;
 
-  if (t == "ping" || t == "hello" || t == "hi" || t == "hey alfred" || t == "hey") {
-    return FastPathResult{"Hello. Alfred is ready."};
+  if (t == "ping" || t == "hello" || t == "hi" || t == "hey arthur" || t == "hey") {
+    return FastPathResult{"Hello, Arthur here."};
   }
 
   if (t == "status" || t == "are you there" || t == "you there") {
-    return FastPathResult{"Alfred online. Speech bridge is healthy."};
+    return FastPathResult{"Arthur here. Speech bridge is healthy."};
   }
 
   if (t.find("what time") != std::string::npos || t == "time" ||
@@ -46,4 +46,4 @@ std::optional<FastPathResult> FastPath::try_handle(const std::string& transcript
   return std::nullopt;
 }
 
-}  // namespace alfred
+}  // namespace intercom

@@ -1,5 +1,5 @@
-#include "alfred/config.hpp"
-#include "alfred/util.hpp"
+#include "intercom/config.hpp"
+#include "intercom/util.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -7,7 +7,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace alfred {
+namespace intercom {
 namespace {
 
 namespace fs = std::filesystem;
@@ -50,7 +50,7 @@ std::string load_agent_def_json(const fs::path& config_path,
   if (agent == "index") return {};
 
   fs::path path = agent_def_path.empty()
-                      ? config_path.parent_path() / "alfred.agent.json"
+                      ? config_path.parent_path() / "arthur.agent.json"
                       : fs::path(agent_def_path);
   if (!path.is_absolute()) {
     path = config_path.parent_path() / path;
@@ -167,4 +167,4 @@ bool Config::authorize_device(const std::string& device_id,
   return false;
 }
 
-}  // namespace alfred
+}  // namespace intercom
