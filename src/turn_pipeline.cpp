@@ -1,4 +1,5 @@
 #include "alfred/turn_pipeline.hpp"
+#include "alfred/speakable.hpp"
 #include "alfred/util.hpp"
 
 #include <chrono>
@@ -49,10 +50,15 @@ std::optional<DeviceSession> TurnPipeline::session_for(const std::string& device
 
 std::int64_t TurnPipeline::ensure_conversation(const std::string& device_id, std::string* err) {
   if (auto existing = sessions_->get(device_id)) {
-    return existing->conversation_id;
+    if (existing->conversation_id > 0) {
+      return existing->conversation_id;
+    }
   }
   auto id = arbiter_->create_conversation("alfred:" + device_id, err);
-  if (!id) return 0;
+  if (!id || *id <= 0) {
+    if (err && err->empty()) *err = "conversation create failed";
+    return 0;
+  }
   DeviceSession s;
   s.device_id = device_id;
   s.conversation_id = *id;
@@ -119,9 +125,10 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   std::string err;
   int spoken_chunks = 0;
   auto speak = [&](const std::string& text) -> bool {
-    if (text.empty()) return true;
+    const std::string spoken = to_speakable(text);
+    if (spoken.empty()) return true;
     return tts_->synthesize(
-        text,
+        spoken,
         [&](const std::uint8_t* data, std::size_t len) {
           if (handle->cancel.load()) return false;
           ++spoken_chunks;
@@ -140,12 +147,14 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       return finish(result);
     }
     result.ok = true;
-    DeviceSession s;
-    s.device_id = device_id;
-    s.conversation_id = result.conversation_id;
-    s.last_turn_id = result.turn_id;
-    s.updated_at = now_unix();
-    sessions_->upsert(s, &err);
+    if (result.conversation_id > 0) {
+      DeviceSession s;
+      s.device_id = device_id;
+      s.conversation_id = result.conversation_id;
+      s.last_turn_id = result.turn_id;
+      s.updated_at = now_unix();
+      sessions_->upsert(s, &err);
+    }
     return finish(result);
   }
 
@@ -183,7 +192,8 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   };
 
   const bool streamed = arbiter_->send_message(
-      conv, result.transcript, result.turn_id, cbs, &handle->cancel, &err);
+      conv, voice_user_message(result.transcript), result.turn_id, cbs,
+      &handle->cancel, &err);
 
   if (handle->cancel.load()) {
     result.error = "canceled";
