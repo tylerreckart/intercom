@@ -1,12 +1,16 @@
 #include "intercom/http_server.hpp"
+#include "intercom/pcm_stream.hpp"
 #include "intercom/util.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <atomic>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 namespace intercom {
@@ -40,16 +44,6 @@ int parse_sample_rate(const httplib::Request& req, int fallback) {
   return fallback;
 }
 
-class CollectingSink : public AudioSink {
- public:
-  std::vector<std::uint8_t> pcm;
-
-  bool write(const std::uint8_t* data, std::size_t len) override {
-    pcm.insert(pcm.end(), data, data + len);
-    return true;
-  }
-};
-
 std::string header_safe(std::string s) {
   for (char& c : s) {
     if (c == '\r' || c == '\n' || c == '\0') c = ' ';
@@ -58,44 +52,78 @@ std::string header_safe(std::string s) {
   return s;
 }
 
-void send_turn_response(httplib::Response& res, const TurnResult& result,
-                        std::vector<std::uint8_t>&& pcm, int sample_rate,
-                        const std::string& device_id) {
+struct StreamingTurnState {
+  PcmStream stream;
+  TurnResult result;
+  std::mutex result_mu;
+  std::atomic<bool> pipeline_done{false};
+  std::atomic<std::uint64_t> bytes_written{0};
+};
+
+void set_turn_headers(httplib::Response& res, const TurnResult& result,
+                      const std::string& device_id,
+                      std::int64_t known_conversation_id) {
   res.set_header("X-Turn-Id", result.turn_id);
-  res.set_header("X-Transcript", result.transcript);
+  res.set_header("X-Transcript", header_safe(result.transcript));
   res.set_header("X-Device-Id", device_id);
-  if (result.conversation_id != 0) {
-    res.set_header("X-Conversation-Id", std::to_string(result.conversation_id));
+  if (known_conversation_id != 0) {
+    res.set_header("X-Conversation-Id", std::to_string(known_conversation_id));
   }
   if (result.used_fast_path) {
     res.set_header("X-Fast-Path", "1");
   }
+}
 
-  const bool failed = !result.ok || !result.error.empty() || pcm.empty();
-  if (failed && pcm.empty()) {
-    const std::string err = result.error.empty() ? "empty tts audio" : result.error;
-    std::cerr << "intercom turn error: " << err << std::endl;
-    res.status = 502;
-    res.set_header("X-Intercom-Error", header_safe(err));
-    nlohmann::json j = {
-        {"error", err},
-        {"ok", false},
-        {"turn_id", result.turn_id},
-        {"fast_path", result.used_fast_path},
-    };
-    res.set_content(j.dump(), "application/json");
-    return;
+void start_streaming_turn(httplib::Response& res,
+                          const ServerDeps& deps,
+                          const std::string& device_id,
+                          const std::string& transcript,
+                          const std::string& turn_id) {
+  auto state = std::make_shared<StreamingTurnState>();
+  state->result.turn_id = turn_id;
+  state->result.transcript = transcript;
+
+  std::int64_t known_conversation_id = 0;
+  if (auto session = deps.pipeline->session_for(device_id)) {
+    known_conversation_id = session->conversation_id;
   }
 
-  if (!result.error.empty()) {
-    std::cerr << "intercom turn warning: " << result.error << std::endl;
-    res.set_header("X-Intercom-Error", header_safe(result.error));
-  }
+  set_turn_headers(res, state->result, device_id, known_conversation_id);
 
   const std::string ctype =
-      "audio/L16; rate=" + std::to_string(sample_rate) + "; channels=1";
+      "audio/L16; rate=" + std::to_string(deps.config.sample_rate) + "; channels=1";
   res.status = 200;
-  res.set_content(std::string(pcm.begin(), pcm.end()), ctype);
+
+  res.set_chunked_content_provider(
+      ctype,
+      [state](size_t /*offset*/, httplib::DataSink& sink) -> bool {
+        auto chunk = state->stream.wait_pop();
+        if (chunk.empty()) {
+          sink.done();
+          return true;
+        }
+        state->bytes_written.fetch_add(chunk.size());
+        return sink.write(reinterpret_cast<const char*>(chunk.data()), chunk.size());
+      },
+      [state](bool /*success*/) {
+        std::lock_guard<std::mutex> lk(state->result_mu);
+        if (!state->result.error.empty()) {
+          std::cerr << "intercom turn warning: " << state->result.error << std::endl;
+        }
+      });
+
+  auto pipeline = deps.pipeline;
+  std::thread([state, pipeline, device_id, transcript, turn_id]() {
+    StreamingAudioSink audio(state->stream);
+    TurnResult result =
+        pipeline->run_text_utterance(device_id, transcript, audio, turn_id);
+    {
+      std::lock_guard<std::mutex> lk(state->result_mu);
+      state->result = std::move(result);
+      state->pipeline_done.store(true);
+    }
+    state->stream.finish();
+  }).detach();
 }
 
 }  // namespace
@@ -195,14 +223,9 @@ void run_http_server(ServerDeps deps) {
     }
 
     const std::string turn_id = intercom::make_turn_id();
-    CollectingSink audio;
-    const TurnResult result = deps.pipeline->run_text_utterance(
-        device_id, transcript, audio, turn_id);
-    send_turn_response(res, result, std::move(audio.pcm), deps.config.sample_rate,
-                       device_id);
+    start_streaming_turn(res, deps, device_id, transcript, turn_id);
   });
 
-  // Optional JSON text utterance for bridge testing without PCM.
   svr.Post("/v1/utterance/text", [&](const httplib::Request& req, httplib::Response& res) {
     const std::string device_id = req.get_header_value("X-Device-Id");
     const std::string token = bearer_token(req);
@@ -229,11 +252,7 @@ void run_http_server(ServerDeps deps) {
     }
 
     const std::string turn_id = intercom::make_turn_id();
-    CollectingSink audio;
-    const TurnResult result = deps.pipeline->run_text_utterance(
-        device_id, transcript, audio, turn_id);
-    send_turn_response(res, result, std::move(audio.pcm), deps.config.sample_rate,
-                       device_id);
+    start_streaming_turn(res, deps, device_id, transcript, turn_id);
   });
 
   std::cout << "intercom listening on http://" << deps.config.listen_host << ":"

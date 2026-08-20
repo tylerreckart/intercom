@@ -1,5 +1,6 @@
 #include "intercom/arbiter_client.hpp"
 #include "intercom/config.hpp"
+#include "intercom/filler_client.hpp"
 #include "intercom/http_server.hpp"
 #include "intercom/session_store.hpp"
 #include "intercom/stt_whisper.hpp"
@@ -21,10 +22,13 @@ void usage(const char* argv0) {
 
 int main(int argc, char** argv) {
   std::string config_path;
+  bool test_filler = false;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--config" && i + 1 < argc) {
       config_path = argv[++i];
+    } else if (arg == "--test-filler") {
+      test_filler = true;
     } else if (arg == "-h" || arg == "--help") {
       usage(argv[0]);
       return 0;
@@ -47,6 +51,16 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  if (test_filler) {
+    intercom::FillerClient client(config.filler);
+    std::string err;
+    const std::string phrase = client.generate(
+        "what is the weather in London", intercom::FillerStage::Initial, "", nullptr, &err);
+    if (!err.empty()) std::cerr << "filler error: " << err << "\n";
+    std::cout << phrase << "\n";
+    return phrase.empty() ? 1 : 0;
+  }
+
   auto sessions = std::make_shared<intercom::SessionStore>(config.session_db);
   std::string err;
   if (!sessions->open(&err)) {
@@ -59,8 +73,19 @@ int main(int argc, char** argv) {
   auto arbiter = std::make_shared<intercom::ArbiterClient>(
       config.arbiter_base_url, config.arbiter_token, config.agent,
       config.agent_def_json);
+  std::shared_ptr<intercom::FillerClient> filler;
+  if (config.filler.enabled) {
+    filler = std::make_shared<intercom::FillerClient>(config.filler);
+    if (filler->enabled()) {
+      std::cout << "intercom filler enabled (model=" << config.filler.model << ")"
+                << std::endl;
+    } else {
+      std::cerr << "intercom filler configured but no api_key — silence fillers disabled"
+                << std::endl;
+    }
+  }
   auto pipeline = std::make_shared<intercom::TurnPipeline>(
-      config, stt, tts, arbiter, sessions);
+      config, stt, tts, arbiter, sessions, filler);
 
   intercom::ServerDeps deps;
   deps.config = config;

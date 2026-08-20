@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "intercom")(type "KiCad")(uri "${KIPRJMOD}/intercom.kicad_sym")(options "")(descr "Intercom local"))
+)

@@ -25,6 +25,7 @@ FetchContent_Declare(
 set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(httplib)
 
+find_package(OpenSSL REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -34,6 +35,7 @@ add_executable(intercom
   src/stt_whisper.cpp
   src/tts_kokoro.cpp
   src/arbiter_client.cpp
+  src/filler_client.cpp
   src/session_store.cpp
   src/fast_path.cpp
   src/turn_pipeline.cpp

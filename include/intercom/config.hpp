@@ -20,6 +20,23 @@ struct KokoroConfig {
   std::string voices;
 };
 
+struct FillerConfig {
+  bool enabled = true;
+  // OpenAI-compatible chat completions endpoint (OpenRouter or DeepSeek direct).
+  std::string api_base_url = "https://openrouter.ai/api/v1";
+  std::string api_key;
+  std::string model = "deepseek/deepseek-v4-flash";
+  // Speak a local ack this many ms after the turn starts (0 = disabled).
+  int instant_ack_ms = 400;
+  // Earliest ms to speak the LLM contextual phrase (unless instant ack already played).
+  int min_silence_ms = 350;
+  int followup_silence_ms = 6000;
+  int max_followups = 1;
+  int timeout_ms = 2500;
+  int max_tokens = 24;
+  double temperature = 0.7;
+};
+
 struct Config {
   std::string listen_host = "127.0.0.1";
   int listen_port = 8090;
@@ -38,6 +55,7 @@ struct Config {
   bool fast_path = true;
   WhisperConfig whisper;
   KokoroConfig kokoro;
+  FillerConfig filler;
 
   static Config load(const std::string& path);
 

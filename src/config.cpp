@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <cstdlib>
 
 #include <nlohmann/json.hpp>
 
@@ -128,6 +129,30 @@ Config Config::load(const std::string& path) {
     c.kokoro.speed = require_number(k, "speed", c.kokoro.speed);
     c.kokoro.model = expand_home(require_string(k, "model", c.kokoro.model));
     c.kokoro.voices = expand_home(require_string(k, "voices", c.kokoro.voices));
+  }
+
+  if (j.contains("filler") && j["filler"].is_object()) {
+    const auto& f = j["filler"];
+    c.filler.enabled = require_bool(f, "enabled", c.filler.enabled);
+    c.filler.api_base_url = require_string(f, "api_base_url", c.filler.api_base_url);
+    c.filler.api_key = require_string(f, "api_key", c.filler.api_key);
+    c.filler.model = require_string(f, "model", c.filler.model);
+    c.filler.instant_ack_ms = require_int(f, "instant_ack_ms", c.filler.instant_ack_ms);
+    c.filler.min_silence_ms = require_int(f, "min_silence_ms", c.filler.min_silence_ms);
+    c.filler.followup_silence_ms =
+        require_int(f, "followup_silence_ms", c.filler.followup_silence_ms);
+    c.filler.max_followups = require_int(f, "max_followups", c.filler.max_followups);
+    c.filler.timeout_ms = require_int(f, "timeout_ms", c.filler.timeout_ms);
+    c.filler.max_tokens = require_int(f, "max_tokens", c.filler.max_tokens);
+    c.filler.temperature = require_number(f, "temperature", c.filler.temperature);
+  }
+
+  if (c.filler.api_key.empty()) {
+    if (const char* key = std::getenv("OPENROUTER_API_KEY")) {
+      c.filler.api_key = key;
+    } else if (const char* key = std::getenv("FILLER_API_KEY")) {
+      c.filler.api_key = key;
+    }
   }
 
   if (c.device_token.empty() && c.devices.empty()) {

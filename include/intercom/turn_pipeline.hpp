@@ -3,6 +3,7 @@
 #include "intercom/arbiter_client.hpp"
 #include "intercom/config.hpp"
 #include "intercom/fast_path.hpp"
+#include "intercom/filler_client.hpp"
 #include "intercom/session_store.hpp"
 #include "intercom/stt.hpp"
 #include "intercom/tts.hpp"
@@ -49,7 +50,8 @@ class TurnPipeline {
                std::shared_ptr<SttProvider> stt,
                std::shared_ptr<TtsProvider> tts,
                std::shared_ptr<ArbiterClient> arbiter,
-               std::shared_ptr<SessionStore> sessions);
+               std::shared_ptr<SessionStore> sessions,
+               std::shared_ptr<FillerClient> filler = nullptr);
 
   TurnResult run_utterance(const std::string& device_id,
                            const std::vector<std::uint8_t>& pcm,
@@ -85,6 +87,7 @@ class TurnPipeline {
   std::shared_ptr<TtsProvider> tts_;
   std::shared_ptr<ArbiterClient> arbiter_;
   std::shared_ptr<SessionStore> sessions_;
+  std::shared_ptr<FillerClient> filler_;
   FastPath fast_path_;
 
   mutable std::mutex turns_mu_;

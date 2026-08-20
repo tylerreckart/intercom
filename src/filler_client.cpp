@@ -1,0 +1,220 @@
+#include "intercom/filler_client.hpp"
+#include "intercom/util.hpp"
+
+#include <httplib.h>
+#include <nlohmann/json.hpp>
+
+#include <memory>
+#include <optional>
+#include <random>
+#include <sstream>
+
+namespace intercom {
+namespace {
+
+struct ParsedUrl {
+  bool https = false;
+  std::string host;
+  int port = 80;
+  std::string path_prefix;
+};
+
+std::optional<ParsedUrl> parse_base_url(const std::string& base) {
+  std::string u = base;
+  while (!u.empty() && u.back() == '/') u.pop_back();
+  ParsedUrl out;
+  if (u.rfind("https://", 0) == 0) {
+    out.https = true;
+    out.port = 443;
+    u = u.substr(8);
+  } else if (u.rfind("http://", 0) == 0) {
+    out.https = false;
+    out.port = 80;
+    u = u.substr(7);
+  } else {
+    return std::nullopt;
+  }
+  const auto slash = u.find('/');
+  std::string hostport = slash == std::string::npos ? u : u.substr(0, slash);
+  out.path_prefix = slash == std::string::npos ? "" : u.substr(slash);
+  const auto colon = hostport.find(':');
+  if (colon == std::string::npos) {
+    out.host = hostport;
+  } else {
+    out.host = hostport.substr(0, colon);
+    out.port = std::stoi(hostport.substr(colon + 1));
+  }
+  if (out.host.empty()) return std::nullopt;
+  return out;
+}
+
+std::unique_ptr<httplib::Client> make_client(const ParsedUrl& parsed) {
+  std::ostringstream url;
+  url << (parsed.https ? "https://" : "http://") << parsed.host;
+  if ((parsed.https && parsed.port != 443) || (!parsed.https && parsed.port != 80)) {
+    url << ':' << parsed.port;
+  }
+  return std::make_unique<httplib::Client>(url.str());
+}
+
+std::string strip_wrapping_quotes(std::string s) {
+  s = trim(s);
+  if (s.size() >= 2 &&
+      ((s.front() == '"' && s.back() == '"') || (s.front() == '\'' && s.back() == '\''))) {
+    return trim(s.substr(1, s.size() - 2));
+  }
+  return s;
+}
+
+std::string first_line(std::string s) {
+  const auto pos = s.find('\n');
+  if (pos != std::string::npos) s.resize(pos);
+  return trim(s);
+}
+
+std::string build_system_prompt(FillerStage stage) {
+  if (stage == FillerStage::FollowUp) {
+    return "Arthur, British voice assistant. Still working. One new thinking-aloud phrase, "
+           "8-12 words. Output only the phrase.";
+  }
+  return "Arthur, British voice assistant. User just spoke. One brief thinking-aloud phrase "
+         "acknowledging them, 8-12 words. Output only the phrase.";
+}
+
+std::string build_user_prompt(const std::string& transcript,
+                              FillerStage stage,
+                              const std::string& previous_phrase) {
+  if (stage == FillerStage::FollowUp && !previous_phrase.empty()) {
+    return "User: \"" + transcript + "\". You said: \"" + previous_phrase +
+           "\". Different phrase:";
+  }
+  return "User: \"" + transcript + "\". Phrase:";
+}
+
+std::string fallback_phrase(FillerStage stage) {
+  static const char* kInitial[] = {
+      "Just a moment.",
+      "Let me think on that.",
+      "Right, give me a second.",
+      "Hmm, let me see.",
+  };
+  static const char* kFollowUp[] = {
+      "Still working on that.",
+      "Nearly there.",
+      "Bear with me a moment.",
+  };
+  static thread_local std::mt19937 rng{std::random_device{}()};
+  if (stage == FillerStage::FollowUp) {
+    std::uniform_int_distribution<std::size_t> dist(0, 2);
+    return kFollowUp[dist(rng)];
+  }
+  std::uniform_int_distribution<std::size_t> dist(0, 3);
+  return kInitial[dist(rng)];
+}
+
+std::string instant_ack_phrase() {
+  static const char* kInstant[] = {
+      "Right.",
+      "Mm-hmm.",
+      "Okay.",
+      "One sec.",
+  };
+  static thread_local std::mt19937 rng{std::random_device{}()};
+  std::uniform_int_distribution<std::size_t> dist(0, 3);
+  return kInstant[dist(rng)];
+}
+
+}  // namespace
+
+FillerClient::FillerClient(FillerConfig config) : config_(std::move(config)) {}
+
+std::string FillerClient::instant_ack() { return instant_ack_phrase(); }
+
+std::string FillerClient::generate(const std::string& transcript,
+                                   FillerStage stage,
+                                   const std::string& previous_phrase,
+                                   std::atomic<bool>* cancel_flag,
+                                   std::string* err) const {
+  if (!enabled()) return {};
+  if (transcript.empty()) return {};
+  if (cancel_flag && cancel_flag->load()) return {};
+
+  auto parsed = parse_base_url(config_.api_base_url);
+  if (!parsed) {
+    if (err) *err = "invalid filler api_base_url";
+    return fallback_phrase(stage);
+  }
+
+#ifndef CPPHTTPLIB_OPENSSL_SUPPORT
+  if (parsed->https) {
+    if (err) *err = "filler: HTTPS requires OpenSSL (rebuild with OpenSSL)";
+    return fallback_phrase(stage);
+  }
+#endif
+
+  auto cli = make_client(*parsed);
+  cli->set_connection_timeout(config_.timeout_ms / 1000,
+                              (config_.timeout_ms % 1000) * 1000);
+  cli->set_read_timeout(config_.timeout_ms / 1000,
+                        (config_.timeout_ms % 1000) * 1000);
+  cli->set_write_timeout(5, 0);
+
+  nlohmann::json body = {
+      {"model", config_.model},
+      {"max_tokens", config_.max_tokens},
+      {"temperature", config_.temperature},
+      {"messages",
+       nlohmann::json::array({
+           {{"role", "system"}, {"content", build_system_prompt(stage)}},
+           {{"role", "user"},
+            {"content", build_user_prompt(transcript, stage, previous_phrase)}},
+       })},
+  };
+
+  httplib::Headers headers = {
+      {"Authorization", "Bearer " + config_.api_key},
+      {"Content-Type", "application/json"},
+  };
+
+  const std::string path = parsed->path_prefix + "/chat/completions";
+  auto res = cli->Post(path.c_str(), headers, body.dump(), "application/json");
+  if (cancel_flag && cancel_flag->load()) return {};
+
+  if (!res) {
+    if (err) *err = "filler: connection failed";
+    return fallback_phrase(stage);
+  }
+  if (res->status != 200) {
+    if (err) {
+      *err = "filler HTTP " + std::to_string(res->status) + ": " + res->body;
+    }
+    return fallback_phrase(stage);
+  }
+
+  try {
+    auto j = nlohmann::json::parse(res->body);
+    if (!j.contains("choices") || !j["choices"].is_array() || j["choices"].empty()) {
+      if (err) *err = "filler: missing choices";
+      return fallback_phrase(stage);
+    }
+    const auto& choice = j["choices"][0];
+    if (!choice.contains("message") || !choice["message"].contains("content") ||
+        choice["message"]["content"].is_null()) {
+      if (err) *err = "filler: missing message content";
+      return fallback_phrase(stage);
+    }
+    std::string phrase = first_line(
+        strip_wrapping_quotes(choice["message"]["content"].get<std::string>()));
+    if (phrase.empty()) {
+      if (err) *err = "filler: empty message content";
+      return fallback_phrase(stage);
+    }
+    if (phrase.size() > 160) phrase.resize(160);
+    return phrase;
+  } catch (const std::exception& e) {
+    if (err) *err = std::string("filler parse: ") + e.what();
+    return fallback_phrase(stage);
+  }
+}
+
+}  // namespace intercom
