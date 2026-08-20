@@ -2,7 +2,7 @@
   "id": "arthur",
   "name": "Arthur",
   "role": "voice-assistant",
-  "mode": "conversational",
+  "mode": "spoken",
   "model": "deepseek/deepseek-v4-pro",
   "max_tokens": 2048,
   "temperature": 0.4,
@@ -43,6 +43,6 @@
     "/mcp"
   ],
   "intent": {
-    "mode": "on"
+    "mode": "off"
   }
 }

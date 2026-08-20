@@ -78,7 +78,12 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 |--------|---------|
 | First utterance per device | `POST /v1/conversations` (`agent_id` + `agent_def` from config) |
 | Each turn | `POST /v1/conversations/:id/messages` + SSE |
+| `message` | STT transcript only (no voice-intercom suffix) |
+| body | `{ "message", "channel": "voice" }` |
+| Arthur | `mode: "spoken"`, `intent.mode: "off"` |
 | Cancel | `POST /v1/requests/:id/cancel` |
 | Idempotency-Key | Intercom `turn_id` |
 
 Default agent: **Arthur** (`config/arthur.agent.json`).
+
+Reply PCM can start before the SSE `done` event: Intercom synthesizes each completed sentence as depth-0 text deltas arrive (Kokoro latency per sentence, not full-turn latency). Remaining text is flushed after `done`; already-spoken sentences are not repeated.
