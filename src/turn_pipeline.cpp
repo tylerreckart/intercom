@@ -2,11 +2,14 @@
 #include "intercom/speakable.hpp"
 #include "intercom/util.hpp"
 
+#include <cctype>
 #include <chrono>
 #include <future>
 #include <iostream>
 #include <optional>
+#include <string_view>
 #include <thread>
+#include <vector>
 
 namespace intercom {
 namespace {
@@ -24,6 +27,8 @@ void sleep_ms(int ms) {
 
 struct ArbiterRunState {
   std::atomic<bool> got_first_delta{false};
+  std::atomic<bool> started_answer{false};
+  std::atomic<bool> saw_tool{false};
   std::atomic<bool> done{false};
   bool streamed = false;
   bool done_ok = false;
@@ -33,6 +38,14 @@ struct ArbiterRunState {
   std::string speak_buf;
   std::mutex speak_mu;
 };
+
+std::size_t non_space_count(std::string_view s) {
+  std::size_t n = 0;
+  for (char c : s) {
+    if (!std::isspace(static_cast<unsigned char>(c))) ++n;
+  }
+  return n;
+}
 
 }  // namespace
 
@@ -231,6 +244,9 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     std::lock_guard<std::mutex> lk(arb_state.speak_mu);
     arb_state.speak_buf += delta;
   };
+  cbs.on_tool_call = [&](const std::string&) {
+    arb_state.saw_tool.store(true);
+  };
   cbs.on_done = [&](bool ok, const std::string& content, const std::string& error) {
     arb_state.done_ok = ok;
     arb_state.full_content = content;
@@ -241,18 +257,43 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   auto arbiter_future = std::async(std::launch::async, [&]() {
     std::string stream_err;
     const bool streamed = arbiter_->send_message(
-        conv, voice_user_message(result.transcript), result.turn_id, cbs,
-        &handle->cancel, &stream_err);
+        conv, result.transcript, result.turn_id, cbs, &handle->cancel, &stream_err);
     arb_state.streamed = streamed;
     arb_state.stream_err = std::move(stream_err);
     arb_state.done.store(true);
     return streamed;
   });
 
+  auto sentence_ready = [&]() -> bool {
+    std::lock_guard<std::mutex> lk(arb_state.speak_mu);
+    std::string copy = arb_state.speak_buf;
+    return !flush_sentences(copy, false).empty();
+  };
+
+  // Drain completed sentences from speak_buf and synthesize each one.
+  // Spoken sentences are not re-spoken on done: final_flush only emits the
+  // leftover tail, and full_content is a fallback when nothing was spoken.
+  auto drain_and_speak = [&](bool final_flush) -> bool {
+    std::vector<std::string> sentences;
+    {
+      std::lock_guard<std::mutex> lk(arb_state.speak_mu);
+      sentences = flush_sentences(arb_state.speak_buf, final_flush);
+    }
+    for (const auto& raw : sentences) {
+      if (handle->cancel.load()) return false;
+      if (non_space_count(raw) < 3) continue;
+      if (!speak(raw)) return false;
+      arb_state.started_answer.store(true);
+    }
+    return true;
+  };
+
   auto maybe_speak_filler = [&](const std::string& phrase, bool is_instant = false) -> bool {
     if (phrase.empty() || handle->cancel.load() || arb_state.done.load()) {
       return true;
     }
+    if (arb_state.started_answer.load()) return true;
+    if (arb_state.got_first_delta.load() && sentence_ready()) return true;
     if (!is_instant && phrase == spoken_filler) return true;
     std::cerr << "intercom filler: speaking \"" << phrase << "\"" << std::endl;
     spoken_filler = phrase;
@@ -266,12 +307,24 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   while (!arb_state.done.load()) {
     if (handle->cancel.load()) break;
 
+    if (arb_state.got_first_delta.load()) {
+      if (!drain_and_speak(false)) {
+        result.error = err.empty() ? "tts failed" : err;
+        handle->cancel.store(true);
+        break;
+      }
+    }
+
+    const bool hold_fillers =
+        arb_state.got_first_delta.load() || arb_state.started_answer.load();
+
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                 std::chrono::steady_clock::now() - turn_start)
                                 .count();
 
-    if (filler_enabled && config_.filler.instant_ack_ms > 0 && !instant_spoken &&
-        spoken_filler.empty() && elapsed_ms >= config_.filler.instant_ack_ms) {
+    if (!hold_fillers && filler_enabled && config_.filler.instant_ack_ms > 0 &&
+        !instant_spoken && spoken_filler.empty() &&
+        elapsed_ms >= config_.filler.instant_ack_ms) {
       instant_spoken = true;
       if (!maybe_speak_filler(FillerClient::instant_ack(), true)) {
         result.error = err.empty() ? "tts failed" : err;
@@ -280,7 +333,8 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       }
     }
 
-    if (filler_enabled && !contextual_spoken && initial_filler_future.valid()) {
+    if (!hold_fillers && filler_enabled && !contextual_spoken &&
+        initial_filler_future.valid()) {
       const bool past_min_silence = elapsed_ms >= config_.filler.min_silence_ms;
       const bool ready_after_instant = instant_spoken || past_min_silence;
       if (ready_after_instant &&
@@ -295,7 +349,8 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       }
     }
 
-    if (filler_enabled && next_followup_at && followups_spoken < config_.filler.max_followups &&
+    if (!hold_fillers && filler_enabled && !arb_state.saw_tool.load() && next_followup_at &&
+        followups_spoken < config_.filler.max_followups &&
         std::chrono::steady_clock::now() >= *next_followup_at) {
       next_followup_at.reset();
       if (!followup_future.valid()) {
@@ -307,12 +362,12 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       }
     }
 
-    if (followup_future.valid() &&
+    if (!hold_fillers && followup_future.valid() &&
         followup_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
       ++followups_spoken;
       const std::string followup = followup_future.get();
       followup_future = {};
-      if (!followup.empty() && followup != spoken_filler) {
+      if (!followup.empty() && followup != spoken_filler && !arb_state.saw_tool.load()) {
         if (!maybe_speak_filler(followup)) {
           result.error = err.empty() ? "tts failed" : err;
           handle->cancel.store(true);
@@ -331,21 +386,16 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     return finish(result);
   }
 
-  std::string speak_buf;
-  {
-    std::lock_guard<std::mutex> lk(arb_state.speak_mu);
-    speak_buf = std::move(arb_state.speak_buf);
-  }
-
-  std::string spoken_text;
-  for (const auto& sentence : flush_sentences(speak_buf, true)) {
-    if (!spoken_text.empty()) spoken_text.push_back(' ');
-    spoken_text += sentence;
-  }
-  if (spoken_text.empty()) spoken_text = arb_state.full_content;
-  if (!spoken_text.empty() && !speak(spoken_text)) {
+  if (!drain_and_speak(true)) {
     result.error = err.empty() ? "tts failed" : err;
     return finish(result);
+  }
+  if (!arb_state.started_answer.load() && !arb_state.full_content.empty()) {
+    if (!speak(arb_state.full_content)) {
+      result.error = err.empty() ? "tts failed" : err;
+      return finish(result);
+    }
+    arb_state.started_answer.store(true);
   }
 
   DeviceSession s;

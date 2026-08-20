@@ -661,14 +661,4 @@ std::string to_speakable(std::string_view text) {
   return s;
 }
 
-std::string voice_user_message(std::string_view transcript) {
-  std::string msg(transcript);
-  msg +=
-      "\n\n(This is a voice intercom. Reply in spoken English only: short "
-      "sentences a person would say out loud. No markdown, no LaTeX, no bullet "
-      "stars, no formulas as symbols. Say math in words, like \"two plus two is "
-      "four\" or \"x squared over two\".)";
-  return msg;
-}
-
 }  // namespace intercom

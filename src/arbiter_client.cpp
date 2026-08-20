@@ -95,13 +95,24 @@ void parse_sse_buffer(std::string& buf,
       // request_id often arrives on done; some deployments put it early — also check.
     }
 
-    if (event_name == "text" && cbs.on_text_delta) {
-      int depth = 0;
+    auto event_depth = [&]() -> int {
       if (j.contains("depth") && j["depth"].is_number_integer()) {
-        depth = j["depth"].get<int>();
+        return j["depth"].get<int>();
       }
-      if (depth == 0 && j.contains("delta") && j["delta"].is_string()) {
+      return 0;
+    };
+
+    if (event_name == "text" && cbs.on_text_delta) {
+      if (event_depth() == 0 && j.contains("delta") && j["delta"].is_string()) {
         cbs.on_text_delta(j["delta"].get<std::string>());
+      }
+    } else if (event_name == "tool_call" && cbs.on_tool_call) {
+      if (event_depth() == 0) {
+        std::string tool;
+        if (j.contains("tool") && j["tool"].is_string()) {
+          tool = j["tool"].get<std::string>();
+        }
+        cbs.on_tool_call(tool);
       }
     } else if (event_name == "done") {
       *got_done = true;
@@ -188,7 +199,10 @@ bool ArbiterClient::send_message(std::int64_t conversation_id,
     return false;
   }
   auto cli = make_client(*parsed);
-  nlohmann::json body = {{"message", message}};
+  nlohmann::json body = {
+      {"message", message},
+      {"channel", "voice"},
+  };
 
   httplib::Request req;
   req.method = "POST";

@@ -61,3 +61,39 @@ endif()
 
 install(TARGETS intercom RUNTIME DESTINATION bin)
 install(FILES config/intercom.example.json config/arthur.agent.json DESTINATION share/intercom)
+
+enable_testing()
+
+add_executable(test_flush_sentences
+  tests/test_flush_sentences.cpp
+  src/util.cpp
+)
+target_include_directories(test_flush_sentences PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_test(NAME test_flush_sentences COMMAND test_flush_sentences)
+
+add_executable(test_sentence_tts
+  tests/test_sentence_tts.cpp
+  src/turn_pipeline.cpp
+  src/speakable.cpp
+  src/util.cpp
+  src/session_store.cpp
+  src/fast_path.cpp
+  src/arbiter_client.cpp
+  src/filler_client.cpp
+)
+target_include_directories(test_sentence_tts PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(test_sentence_tts PRIVATE
+  nlohmann_json::nlohmann_json
+  httplib::httplib
+  SQLite3::SQLite3
+  Threads::Threads
+)
+if(APPLE)
+  target_compile_definitions(test_sentence_tts PRIVATE CPPHTTPLIB_USE_POLL)
+endif()
+add_test(NAME test_sentence_tts COMMAND test_sentence_tts)
+
