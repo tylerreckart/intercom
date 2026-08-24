@@ -42,6 +42,7 @@ add_executable(intercom
   src/http_server.cpp
   src/util.cpp
   src/speakable.cpp
+  src/managed_server.cpp
 )
 
 target_include_directories(intercom PRIVATE
@@ -55,12 +56,16 @@ target_link_libraries(intercom PRIVATE
   Threads::Threads
 )
 
+target_compile_definitions(intercom PRIVATE
+  "INTERCOM_SCRIPTS_DIR=\"${CMAKE_SOURCE_DIR}/scripts\""
+)
 if(APPLE)
   target_compile_definitions(intercom PRIVATE CPPHTTPLIB_USE_POLL)
 endif()
 
 install(TARGETS intercom RUNTIME DESTINATION bin)
 install(FILES config/intercom.example.json config/arthur.agent.json DESTINATION share/intercom)
+install(FILES scripts/kokoro_server.py DESTINATION share/intercom)
 
 enable_testing()
 
@@ -72,6 +77,15 @@ target_include_directories(test_flush_sentences PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 add_test(NAME test_flush_sentences COMMAND test_flush_sentences)
+
+add_executable(test_wav_util
+  tests/test_wav_util.cpp
+  src/util.cpp
+)
+target_include_directories(test_wav_util PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_test(NAME test_wav_util COMMAND test_wav_util)
 
 add_executable(test_sentence_tts
   tests/test_sentence_tts.cpp

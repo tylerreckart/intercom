@@ -5,6 +5,7 @@
 #include <atomic>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace intercom {
 
@@ -22,6 +23,7 @@ class FillerClient {
 
   // Ultra-short local ack — no network, for immediate playback.
   static std::string instant_ack();
+  static std::vector<std::string> instant_ack_phrases();
 
   // Returns empty on failure, disabled, or cancel.
   std::string generate(const std::string& transcript,

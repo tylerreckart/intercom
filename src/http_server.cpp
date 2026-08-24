@@ -6,6 +6,8 @@
 #include <nlohmann/json.hpp>
 
 #include <atomic>
+#include <chrono>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -15,6 +17,12 @@
 
 namespace intercom {
 namespace {
+
+httplib::Server* g_svr = nullptr;
+
+void on_stop_signal(int) {
+  if (g_svr) g_svr->stop();
+}
 
 std::string bearer_token(const httplib::Request& req) {
   const auto auth = req.get_header_value("Authorization");
@@ -78,7 +86,8 @@ void start_streaming_turn(httplib::Response& res,
                           const ServerDeps& deps,
                           const std::string& device_id,
                           const std::string& transcript,
-                          const std::string& turn_id) {
+                          const std::string& turn_id,
+                          int stt_ms) {
   auto state = std::make_shared<StreamingTurnState>();
   state->result.turn_id = turn_id;
   state->result.transcript = transcript;
@@ -113,10 +122,10 @@ void start_streaming_turn(httplib::Response& res,
       });
 
   auto pipeline = deps.pipeline;
-  std::thread([state, pipeline, device_id, transcript, turn_id]() {
+  std::thread([state, pipeline, device_id, transcript, turn_id, stt_ms]() {
     StreamingAudioSink audio(state->stream);
     TurnResult result =
-        pipeline->run_text_utterance(device_id, transcript, audio, turn_id);
+        pipeline->run_text_utterance(device_id, transcript, audio, turn_id, stt_ms);
     {
       std::lock_guard<std::mutex> lk(state->result_mu);
       state->result = std::move(result);
@@ -130,6 +139,9 @@ void start_streaming_turn(httplib::Response& res,
 
 void run_http_server(ServerDeps deps) {
   httplib::Server svr;
+  g_svr = &svr;
+  std::signal(SIGINT, on_stop_signal);
+  std::signal(SIGTERM, on_stop_signal);
 
   svr.Get("/health", [&](const httplib::Request&, httplib::Response& res) {
     std::string stt_detail;
@@ -211,19 +223,25 @@ void run_http_server(ServerDeps deps) {
     std::vector<std::uint8_t> pcm(req.body.begin(), req.body.end());
 
     std::string stt_err;
+    const auto stt_t0 = std::chrono::steady_clock::now();
     const std::string transcript = deps.pipeline->stt().transcribe(
         pcm, sample_rate, deps.config.channels, &stt_err);
+    const int stt_ms = static_cast<int>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - stt_t0)
+            .count());
     if (transcript.empty()) {
       res.status = 502;
       const std::string err = stt_err.empty() ? "stt failed" : stt_err;
       res.set_header("X-Intercom-Error", header_safe(err));
-      nlohmann::json j = {{"error", err}};
+      nlohmann::json j = {{"error", err}, {"stt_ms", stt_ms}};
       res.set_content(j.dump(), "application/json");
+      std::cerr << "intercom latency stt_ms=" << stt_ms << " error=" << err << std::endl;
       return;
     }
 
     const std::string turn_id = intercom::make_turn_id();
-    start_streaming_turn(res, deps, device_id, transcript, turn_id);
+    start_streaming_turn(res, deps, device_id, transcript, turn_id, stt_ms);
   });
 
   svr.Post("/v1/utterance/text", [&](const httplib::Request& req, httplib::Response& res) {
@@ -252,7 +270,7 @@ void run_http_server(ServerDeps deps) {
     }
 
     const std::string turn_id = intercom::make_turn_id();
-    start_streaming_turn(res, deps, device_id, transcript, turn_id);
+    start_streaming_turn(res, deps, device_id, transcript, turn_id, -1);
   });
 
   std::cout << "intercom listening on http://" << deps.config.listen_host << ":"

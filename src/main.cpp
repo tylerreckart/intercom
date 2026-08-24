@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
 
   auto stt = std::make_shared<intercom::WhisperStt>(config.whisper);
   auto tts = std::make_shared<intercom::KokoroTts>(config.kokoro, config.sample_rate);
+  tts->warmup();
   auto arbiter = std::make_shared<intercom::ArbiterClient>(
       config.arbiter_base_url, config.arbiter_token, config.agent,
       config.agent_def_json);

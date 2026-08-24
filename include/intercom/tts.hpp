@@ -21,6 +21,9 @@ class TtsProvider {
                           std::string* err) = 0;
 
   virtual bool ready(std::string* detail) const = 0;
+
+  // Optional startup work (load caches, warm engines). Default is a no-op.
+  virtual void warmup() {}
 };
 
 }  // namespace intercom

@@ -83,10 +83,42 @@ bool executable_on_path_or_file(const std::string& binary) {
   return false;
 }
 
-bool write_wav_s16le(const std::string& path,
-                     const std::vector<std::uint8_t>& pcm,
-                     int sample_rate,
-                     int channels) {
+std::optional<ParsedHttpUrl> parse_http_url(const std::string& url) {
+  std::string u = url;
+  while (!u.empty() && u.back() == '/') u.pop_back();
+  ParsedHttpUrl out;
+  if (u.rfind("https://", 0) == 0) {
+    out.https = true;
+    out.port = 443;
+    u = u.substr(8);
+  } else if (u.rfind("http://", 0) == 0) {
+    out.https = false;
+    out.port = 80;
+    u = u.substr(7);
+  } else {
+    return std::nullopt;
+  }
+  const auto slash = u.find('/');
+  const std::string hostport = slash == std::string::npos ? u : u.substr(0, slash);
+  out.path = slash == std::string::npos ? "" : u.substr(slash);
+  const auto colon = hostport.find(':');
+  if (colon == std::string::npos) {
+    out.host = hostport;
+  } else {
+    out.host = hostport.substr(0, colon);
+    try {
+      out.port = std::stoi(hostport.substr(colon + 1));
+    } catch (...) {
+      return std::nullopt;
+    }
+  }
+  if (out.host.empty()) return std::nullopt;
+  return out;
+}
+
+std::vector<std::uint8_t> encode_wav_s16le(const std::vector<std::uint8_t>& pcm,
+                                           int sample_rate,
+                                           int channels) {
   WavHeader h;
   h.num_channels = static_cast<std::uint16_t>(channels);
   h.sample_rate = static_cast<std::uint32_t>(sample_rate);
@@ -96,56 +128,67 @@ bool write_wav_s16le(const std::string& path,
   h.data_size = static_cast<std::uint32_t>(pcm.size());
   h.chunk_size = 36 + h.data_size;
 
+  std::vector<std::uint8_t> out(sizeof(h) + pcm.size());
+  std::memcpy(out.data(), &h, sizeof(h));
+  if (!pcm.empty()) {
+    std::memcpy(out.data() + sizeof(h), pcm.data(), pcm.size());
+  }
+  return out;
+}
+
+bool write_wav_s16le(const std::string& path,
+                     const std::vector<std::uint8_t>& pcm,
+                     int sample_rate,
+                     int channels) {
+  const auto bytes = encode_wav_s16le(pcm, sample_rate, channels);
   std::ofstream out(path, std::ios::binary);
   if (!out) return false;
-  out.write(reinterpret_cast<const char*>(&h), sizeof(h));
-  out.write(reinterpret_cast<const char*>(pcm.data()),
-            static_cast<std::streamsize>(pcm.size()));
+  out.write(reinterpret_cast<const char*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size()));
   return static_cast<bool>(out);
 }
 
-std::optional<std::vector<std::uint8_t>> read_wav_s16le(const std::string& path,
-                                                        int* out_sample_rate,
-                                                        int* out_channels) {
-  std::ifstream in(path, std::ios::binary);
-  if (!in) return std::nullopt;
-
-  char riff[12];
-  in.read(riff, 12);
-  if (in.gcount() != 12 || std::strncmp(riff, "RIFF", 4) != 0 ||
-      std::strncmp(riff + 8, "WAVE", 4) != 0) {
+std::optional<std::vector<std::uint8_t>> parse_wav_s16le(const std::uint8_t* data,
+                                                         std::size_t len,
+                                                         int* out_sample_rate,
+                                                         int* out_channels) {
+  if (!data || len < 12) return std::nullopt;
+  if (std::memcmp(data, "RIFF", 4) != 0 || std::memcmp(data + 8, "WAVE", 4) != 0) {
     return std::nullopt;
   }
 
+  std::size_t off = 12;
   std::uint16_t audio_format = 0;
   std::uint16_t channels = 0;
   std::uint32_t sample_rate = 0;
   std::uint16_t bits = 0;
   std::vector<std::uint8_t> pcm;
 
-  while (in) {
-    char id[4];
-    std::uint32_t size = 0;
-    in.read(id, 4);
-    in.read(reinterpret_cast<char*>(&size), 4);
-    if (!in) break;
-    if (std::strncmp(id, "fmt ", 4) == 0) {
-      std::vector<char> buf(size);
-      in.read(buf.data(), size);
-      if (size >= 16) {
-        std::memcpy(&audio_format, buf.data(), 2);
-        std::memcpy(&channels, buf.data() + 2, 2);
-        std::memcpy(&sample_rate, buf.data() + 4, 4);
-        std::memcpy(&bits, buf.data() + 14, 2);
-      }
-      if (size % 2) in.ignore(1);
+  auto read_u32 = [&](std::size_t i) -> std::uint32_t {
+    std::uint32_t v = 0;
+    std::memcpy(&v, data + i, 4);
+    return v;
+  };
+  auto read_u16 = [&](std::size_t i) -> std::uint16_t {
+    std::uint16_t v = 0;
+    std::memcpy(&v, data + i, 2);
+    return v;
+  };
+
+  while (off + 8 <= len) {
+    const char* id = reinterpret_cast<const char*>(data + off);
+    const std::uint32_t size = read_u32(off + 4);
+    off += 8;
+    if (off + size > len) break;
+    if (std::strncmp(id, "fmt ", 4) == 0 && size >= 16) {
+      audio_format = read_u16(off);
+      channels = read_u16(off + 2);
+      sample_rate = read_u32(off + 4);
+      bits = read_u16(off + 14);
     } else if (std::strncmp(id, "data", 4) == 0) {
-      pcm.resize(size);
-      in.read(reinterpret_cast<char*>(pcm.data()), size);
-      if (size % 2) in.ignore(1);
-    } else {
-      in.ignore(size + (size % 2));
+      pcm.assign(data + off, data + off + size);
     }
+    off += size + (size % 2);
   }
 
   if (audio_format != 1 || bits != 16 || channels < 1 || pcm.empty()) {
@@ -154,6 +197,21 @@ std::optional<std::vector<std::uint8_t>> read_wav_s16le(const std::string& path,
   if (out_sample_rate) *out_sample_rate = static_cast<int>(sample_rate);
   if (out_channels) *out_channels = static_cast<int>(channels);
   return pcm;
+}
+
+std::optional<std::vector<std::uint8_t>> read_wav_s16le(const std::string& path,
+                                                        int* out_sample_rate,
+                                                        int* out_channels) {
+  std::ifstream in(path, std::ios::binary);
+  if (!in) return std::nullopt;
+  in.seekg(0, std::ios::end);
+  const auto n = in.tellg();
+  if (n <= 0) return std::nullopt;
+  in.seekg(0, std::ios::beg);
+  std::vector<std::uint8_t> bytes(static_cast<std::size_t>(n));
+  in.read(reinterpret_cast<char*>(bytes.data()), n);
+  if (!in) return std::nullopt;
+  return parse_wav_s16le(bytes.data(), bytes.size(), out_sample_rate, out_channels);
 }
 
 std::vector<std::uint8_t> resample_s16le_mono(const std::vector<std::uint8_t>& pcm,

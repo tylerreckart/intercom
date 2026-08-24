@@ -2,6 +2,7 @@
 #include "intercom/speakable.hpp"
 #include "intercom/util.hpp"
 
+#include <atomic>
 #include <cctype>
 #include <chrono>
 #include <future>
@@ -127,20 +128,28 @@ TurnResult TurnPipeline::run_utterance(const std::string& device_id,
                                        int channels,
                                        AudioSink& sink) {
   std::string err;
+  const auto stt_t0 = std::chrono::steady_clock::now();
   const std::string transcript = stt_->transcribe(pcm, sample_rate, channels, &err);
+  const int stt_ms = static_cast<int>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - stt_t0)
+          .count());
   if (transcript.empty()) {
     TurnResult result;
     result.turn_id = make_turn_id();
     result.error = err.empty() ? "stt failed" : err;
+    std::cerr << "intercom latency turn=" << result.turn_id << " stt_ms=" << stt_ms
+              << " error=" << result.error << std::endl;
     return result;
   }
-  return run_text_utterance(device_id, transcript, sink);
+  return run_text_utterance(device_id, transcript, sink, {}, stt_ms);
 }
 
 TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
                                             const std::string& transcript,
                                             AudioSink& sink,
-                                            std::string turn_id) {
+                                            std::string turn_id,
+                                            int stt_ms) {
   TurnResult result;
   result.turn_id = turn_id.empty() ? make_turn_id() : std::move(turn_id);
   result.transcript = transcript;
@@ -148,8 +157,35 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   handle->turn_id = result.turn_id;
   register_turn(handle);
 
+  const auto turn_start = std::chrono::steady_clock::now();
+  int ttfa_ms = -1;
+  int kokoro_first_ms = -1;
+  int kokoro_total_ms = 0;
+  int conv_ms = -1;
+  int first_sentence_ms = -1;
+  int first_answer_ms = -1;
+  std::atomic<int> arbiter_ttft_ms{-1};
+  const char* ttfa_kind = "";
+  const char* pending_kind = "answer";
+  const char* path_name = "arbiter";
+
+  auto elapsed_now = [&]() -> int {
+    return static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - turn_start)
+                                .count());
+  };
+
   auto finish = [&](TurnResult r) {
     unregister_turn(result.turn_id);
+    std::cerr << "intercom latency turn=" << result.turn_id << " path=" << path_name
+              << " stt_ms=" << stt_ms << " conv_ms=" << conv_ms
+              << " arbiter_ttft_ms=" << arbiter_ttft_ms.load()
+              << " first_sentence_ms=" << first_sentence_ms
+              << " kokoro_ms=" << kokoro_first_ms << " kokoro_total_ms=" << kokoro_total_ms
+              << " ttfa_ms=" << ttfa_ms << " ttfa_kind=" << (ttfa_kind[0] ? ttfa_kind : "-")
+              << " first_answer_ms=" << first_answer_ms;
+    if (!r.error.empty()) std::cerr << " error=" << r.error;
+    std::cerr << std::endl;
     return r;
   };
 
@@ -162,17 +198,30 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   auto speak = [&](const std::string& text) -> bool {
     const std::string spoken = to_speakable(text);
     if (spoken.empty()) return true;
-    return tts_->synthesize(
+    const auto t0 = std::chrono::steady_clock::now();
+    const bool ok = tts_->synthesize(
         spoken,
         [&](const std::uint8_t* data, std::size_t len) {
           if (handle->cancel.load()) return false;
+          if (ttfa_ms < 0) {
+            ttfa_ms = elapsed_now();
+            ttfa_kind = pending_kind;
+          }
           return sink.write(data, len);
         },
         &err);
+    const int dt = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                        std::chrono::steady_clock::now() - t0)
+                                        .count());
+    if (kokoro_first_ms < 0) kokoro_first_ms = dt;
+    kokoro_total_ms += dt;
+    return ok;
   };
 
   if (auto fp = fast_path_.try_handle(result.transcript)) {
     result.used_fast_path = true;
+    path_name = "fast";
+    pending_kind = "fast";
     if (auto existing = sessions_->get(device_id)) {
       result.conversation_id = existing->conversation_id;
     }
@@ -194,10 +243,9 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
 
   const bool filler_enabled =
       filler_ && filler_->enabled() && config_.filler.enabled;
-  const auto turn_start = std::chrono::steady_clock::now();
 
   std::future<std::string> initial_filler_future;
-  if (filler_enabled) {
+  if (filler_enabled && config_.filler.instant_ack_ms <= 0) {
     initial_filler_future = std::async(std::launch::async, [&, transcript]() {
       std::string filler_err;
       const std::string phrase = filler_->generate(
@@ -219,6 +267,7 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   });
 
   const std::int64_t conv = conv_future.get();
+  conv_ms = elapsed_now();
   if (conv == 0) {
     result.error = conv_err.empty() ? "conversation create failed" : conv_err;
     return finish(result);
@@ -240,6 +289,9 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   };
   cbs.on_text_delta = [&](const std::string& delta) {
     if (handle->cancel.load()) return;
+    if (!arb_state.got_first_delta.load()) {
+      arbiter_ttft_ms.store(elapsed_now());
+    }
     arb_state.got_first_delta.store(true);
     std::lock_guard<std::mutex> lk(arb_state.speak_mu);
     arb_state.speak_buf += delta;
@@ -282,7 +334,10 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     for (const auto& raw : sentences) {
       if (handle->cancel.load()) return false;
       if (non_space_count(raw) < 3) continue;
+      if (first_sentence_ms < 0) first_sentence_ms = elapsed_now();
+      pending_kind = "answer";
       if (!speak(raw)) return false;
+      if (first_answer_ms < 0) first_answer_ms = elapsed_now();
       arb_state.started_answer.store(true);
     }
     return true;
@@ -297,11 +352,14 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     if (!is_instant && phrase == spoken_filler) return true;
     std::cerr << "intercom filler: speaking \"" << phrase << "\"" << std::endl;
     spoken_filler = phrase;
-    if (!is_instant && config_.filler.max_followups > 0) {
+    pending_kind = is_instant ? "ack" : "filler";
+    if (config_.filler.max_followups > 0) {
       next_followup_at = std::chrono::steady_clock::now() +
                          std::chrono::milliseconds(config_.filler.followup_silence_ms);
     }
-    return speak(phrase);
+    const bool ok = speak(phrase);
+    pending_kind = "answer";
+    return ok;
   };
 
   while (!arb_state.done.load()) {
@@ -334,18 +392,15 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     }
 
     if (!hold_fillers && filler_enabled && !contextual_spoken &&
-        initial_filler_future.valid()) {
-      const bool past_min_silence = elapsed_ms >= config_.filler.min_silence_ms;
-      const bool ready_after_instant = instant_spoken || past_min_silence;
-      if (ready_after_instant &&
-          initial_filler_future.wait_for(std::chrono::milliseconds(0)) ==
-              std::future_status::ready) {
-        contextual_spoken = true;
-        if (!maybe_speak_filler(initial_filler_future.get())) {
-          result.error = err.empty() ? "tts failed" : err;
-          handle->cancel.store(true);
-          break;
-        }
+        !instant_spoken && initial_filler_future.valid() &&
+        elapsed_ms >= config_.filler.min_silence_ms &&
+        initial_filler_future.wait_for(std::chrono::milliseconds(0)) ==
+            std::future_status::ready) {
+      contextual_spoken = true;
+      if (!maybe_speak_filler(initial_filler_future.get())) {
+        result.error = err.empty() ? "tts failed" : err;
+        handle->cancel.store(true);
+        break;
       }
     }
 

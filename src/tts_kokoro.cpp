@@ -1,11 +1,24 @@
 #include "intercom/tts_kokoro.hpp"
+#include "intercom/filler_client.hpp"
+#include "intercom/managed_server.hpp"
 #include "intercom/util.hpp"
 
+#include <httplib.h>
+#include <nlohmann/json.hpp>
+
+#include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <sys/wait.h>
+#include <unistd.h>
+
+#ifndef INTERCOM_SCRIPTS_DIR
+#define INTERCOM_SCRIPTS_DIR ""
+#endif
 
 namespace intercom {
 namespace {
@@ -30,7 +43,6 @@ bool write_text_file(const std::string& path, const std::string& text) {
 bool downmix_to_mono(std::vector<std::uint8_t>* pcm, int channels) {
   if (!pcm || pcm->empty() || channels <= 1) return true;
   if (channels > 1) {
-    // Take left channel samples.
     std::vector<std::uint8_t> mono(pcm->size() / static_cast<std::size_t>(channels));
     const auto* in = reinterpret_cast<const std::int16_t*>(pcm->data());
     auto* m = reinterpret_cast<std::int16_t*>(mono.data());
@@ -43,15 +55,151 @@ bool downmix_to_mono(std::vector<std::uint8_t>* pcm, int channels) {
   return true;
 }
 
+bool normalize_pcm(std::vector<std::uint8_t>* pcm, int wav_rate, int wav_ch, int target_rate) {
+  if (!pcm) return false;
+  downmix_to_mono(pcm, wav_ch);
+  if (wav_rate <= 0) wav_rate = 24000;
+  if (wav_rate != target_rate) {
+    *pcm = resample_s16le_mono(*pcm, wav_rate, target_rate);
+  }
+  return true;
+}
+
+bool emit_chunks(const std::vector<std::uint8_t>& pcm,
+                 TtsProvider::PcmChunkFn on_chunk,
+                 std::string* err) {
+  constexpr std::size_t kChunk = 4096;
+  for (std::size_t off = 0; off < pcm.size(); off += kChunk) {
+    const std::size_t n = std::min(kChunk, pcm.size() - off);
+    if (on_chunk && !on_chunk(pcm.data() + off, n)) {
+      if (err) *err = "tts sink aborted";
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 KokoroTts::KokoroTts(KokoroConfig cfg, int target_sample_rate)
     : cfg_(std::move(cfg)), target_sample_rate_(target_sample_rate) {
   cfg_.model = expand_home(cfg_.model);
   cfg_.voices = expand_home(cfg_.voices);
+  cfg_.binary = expand_home(cfg_.binary);
+  cfg_.server_script = expand_home(cfg_.server_script);
+  if (!cfg_.server_url.empty()) {
+    server_url_ = cfg_.server_url;
+    while (!server_url_.empty() && server_url_.back() == '/') server_url_.pop_back();
+  } else if (cfg_.use_server) {
+    server_url_ = "http://127.0.0.1:" + std::to_string(cfg_.server_port);
+  }
+  std::string err;
+  if (cfg_.use_server && !server_url_.empty()) {
+    if (!ensure_server(&err)) {
+      std::cerr << "intercom kokoro: warm server unavailable (" << err
+                << ") — falling back to CLI" << std::endl;
+      child_.reset();
+      if (cfg_.server_url.empty()) server_url_.clear();
+    }
+  }
+}
+
+KokoroTts::~KokoroTts() = default;
+
+std::string KokoroTts::find_server_script() const {
+  std::vector<std::string> candidates;
+  if (!cfg_.server_script.empty()) candidates.push_back(cfg_.server_script);
+  if (const char* env = std::getenv("INTERCOM_KOKORO_SERVER")) {
+    if (*env) candidates.emplace_back(env);
+  }
+  if (INTERCOM_SCRIPTS_DIR[0] != '\0') {
+    candidates.emplace_back(std::string(INTERCOM_SCRIPTS_DIR) + "/kokoro_server.py");
+  }
+  const std::string exe_dir = this_executable_dir();
+  if (!exe_dir.empty()) {
+    candidates.push_back(exe_dir + "/kokoro_server.py");
+    candidates.push_back(exe_dir + "/../scripts/kokoro_server.py");
+    candidates.push_back(exe_dir + "/../share/intercom/kokoro_server.py");
+  }
+  candidates.emplace_back("scripts/kokoro_server.py");
+
+  for (const auto& raw : candidates) {
+    std::error_code ec;
+    const auto path = std::filesystem::weakly_canonical(std::filesystem::path(raw), ec);
+    const std::string s = ec ? raw : path.string();
+    if (file_exists(s)) return s;
+  }
+  return {};
+}
+
+bool KokoroTts::ensure_server(std::string* err) {
+  if (!server_url_.empty() && http_get_ok(server_url_ + "/health", 400)) {
+    return true;
+  }
+  if (!cfg_.server_url.empty()) {
+    if (err) *err = "kokoro server_url not reachable: " + cfg_.server_url;
+    return false;
+  }
+
+  if (!file_exists(cfg_.model) || !file_exists(cfg_.voices)) {
+    if (err) *err = "kokoro model/voices missing";
+    return false;
+  }
+
+  const std::string script = find_server_script();
+  if (script.empty()) {
+    if (err) *err = "kokoro_server.py not found";
+    return false;
+  }
+
+  std::string python;
+  const std::string tts_bin = which_executable(cfg_.binary);
+  if (!tts_bin.empty()) {
+    python = shebang_interpreter(tts_bin);
+    if (python.empty()) {
+      python = sibling_binary(tts_bin, "python");
+    }
+  }
+  if (python.empty() || ::access(python.c_str(), X_OK) != 0) {
+    python = which_executable("python3");
+  }
+  if (python.empty()) {
+    if (err) *err = "python interpreter for kokoro_server.py not found";
+    return false;
+  }
+
+  std::vector<std::string> argv = {
+      python,
+      script,
+      "--model",
+      cfg_.model,
+      "--voices",
+      cfg_.voices,
+      "--voice",
+      cfg_.voice,
+      "--speed",
+      std::to_string(cfg_.speed),
+      "--host",
+      "127.0.0.1",
+      "--port",
+      std::to_string(cfg_.server_port),
+  };
+  child_ = std::make_unique<ManagedServer>();
+  return child_->start("kokoro", argv, server_url_ + "/health", 60000, err);
 }
 
 bool KokoroTts::ready(std::string* detail) const {
+  if (!server_url_.empty() && http_get_ok(server_url_ + "/health", 400)) {
+    std::size_t n = 0;
+    {
+      std::lock_guard<std::mutex> lk(mu_);
+      n = cache_.size();
+    }
+    if (detail) {
+      *detail = "server " + server_url_ + ", " + std::to_string(n) + " cached acks";
+    }
+    return true;
+  }
   if (!executable_on_path_or_file(cfg_.binary)) {
     if (detail) *detail = "kokoro-tts binary not found: " + cfg_.binary;
     return false;
@@ -64,17 +212,116 @@ bool KokoroTts::ready(std::string* detail) const {
     if (detail) *detail = "kokoro voices missing: " + cfg_.voices;
     return false;
   }
-  if (detail) *detail = "ok";
+  if (detail) *detail = "ok (cli)";
   return true;
 }
 
-bool KokoroTts::synthesize(const std::string& text,
-                            PcmChunkFn on_chunk,
-                            std::string* err) {
+void KokoroTts::warmup() {
+  std::string err;
+  for (const auto& phrase : FillerClient::instant_ack_phrases()) {
+    std::vector<std::uint8_t> pcm;
+    const bool ok = synthesize_live(phrase,
+                                    [&](const std::uint8_t* data, std::size_t len) {
+                                      pcm.insert(pcm.end(), data, data + len);
+                                      return true;
+                                    },
+                                    &err);
+    if (!ok || pcm.empty()) {
+      std::cerr << "intercom kokoro: ack cache miss for \"" << phrase << "\"";
+      if (!err.empty()) std::cerr << " (" << err << ")";
+      std::cerr << std::endl;
+      continue;
+    }
+    std::lock_guard<std::mutex> lk(mu_);
+    cache_[phrase] = std::move(pcm);
+  }
+  std::lock_guard<std::mutex> lk(mu_);
+  std::cout << "intercom kokoro: cached " << cache_.size() << " instant-ack phrases"
+            << std::endl;
+}
+
+bool KokoroTts::emit_pcm(const std::vector<std::uint8_t>& pcm,
+                         PcmChunkFn on_chunk,
+                         std::string* err) {
+  return emit_chunks(pcm, on_chunk, err);
+}
+
+bool KokoroTts::synthesize(const std::string& text, PcmChunkFn on_chunk, std::string* err) {
   if (text.empty()) return true;
+  std::vector<std::uint8_t> cached;
+  {
+    std::lock_guard<std::mutex> lk(mu_);
+    auto it = cache_.find(text);
+    if (it != cache_.end()) cached = it->second;
+  }
+  if (!cached.empty()) return emit_pcm(cached, on_chunk, err);
+  return synthesize_live(text, on_chunk, err);
+}
+
+bool KokoroTts::synthesize_live(const std::string& text,
+                                PcmChunkFn on_chunk,
+                                std::string* err) {
+  std::lock_guard<std::mutex> lk(mu_);
+  if (!server_url_.empty()) {
+    std::string http_err;
+    if (synthesize_http(text, on_chunk, &http_err)) return true;
+    if (err) *err = http_err;
+    if (cfg_.server_url.empty()) {
+      // Spawned/attached server failed; try CLI once rather than stall the turn.
+      std::cerr << "intercom kokoro: server synth failed (" << http_err
+                << ") — trying CLI" << std::endl;
+    } else {
+      return false;
+    }
+  }
+  return synthesize_cli(text, on_chunk, err);
+}
+
+bool KokoroTts::synthesize_http(const std::string& text,
+                                PcmChunkFn on_chunk,
+                                std::string* err) {
+  auto parsed = parse_http_url(server_url_);
+  if (!parsed) {
+    if (err) *err = "invalid kokoro server_url";
+    return false;
+  }
+  httplib::Client cli(parsed->host, parsed->port);
+  cli.set_connection_timeout(5, 0);
+  cli.set_read_timeout(120, 0);
+  cli.set_write_timeout(30, 0);
+  nlohmann::json body = {{"text", text}};
+  const std::string path = parsed->path + "/v1/tts";
+  auto res = cli.Post(path.c_str(), body.dump(), "application/json");
+  if (!res) {
+    if (err) *err = "kokoro server: connection failed";
+    return false;
+  }
+  if (res->status != 200) {
+    if (err) *err = "kokoro server HTTP " + std::to_string(res->status) + ": " + res->body;
+    return false;
+  }
+  int wav_rate = 0;
+  int wav_ch = 0;
+  auto pcm = parse_wav_s16le(reinterpret_cast<const std::uint8_t*>(res->body.data()),
+                             res->body.size(), &wav_rate, &wav_ch);
+  if (!pcm) {
+    if (err) *err = "kokoro server: invalid wav";
+    return false;
+  }
+  if (!normalize_pcm(&*pcm, wav_rate, wav_ch, target_sample_rate_)) {
+    if (err) *err = "kokoro server: pcm normalize failed";
+    return false;
+  }
+  return emit_pcm(*pcm, on_chunk, err);
+}
+
+bool KokoroTts::synthesize_cli(const std::string& text,
+                               PcmChunkFn on_chunk,
+                               std::string* err) {
   std::string ready_detail;
-  if (!ready(&ready_detail)) {
-    if (err) *err = ready_detail;
+  if (!executable_on_path_or_file(cfg_.binary) || !file_exists(cfg_.model) ||
+      !file_exists(cfg_.voices)) {
+    if (err) *err = ready_detail.empty() ? "kokoro-tts not ready" : ready_detail;
     return false;
   }
 
@@ -124,25 +371,11 @@ bool KokoroTts::synthesize(const std::string& text,
     if (err) *err = "failed to read kokoro wav";
     return false;
   }
-
-  if (wav_rate <= 0) wav_rate = 24000;
-  std::vector<std::uint8_t> out = *pcm;
-  downmix_to_mono(&out, wav_ch);
-
-  if (wav_rate != target_sample_rate_) {
-    out = resample_s16le_mono(out, wav_rate, target_sample_rate_);
+  if (!normalize_pcm(&*pcm, wav_rate, wav_ch, target_sample_rate_)) {
+    if (err) *err = "kokoro pcm normalize failed";
+    return false;
   }
-
-  constexpr std::size_t kChunk = 4096;
-  for (std::size_t off = 0; off < out.size(); off += kChunk) {
-    const std::size_t n = std::min(kChunk, out.size() - off);
-    if (on_chunk && !on_chunk(out.data() + off, n)) {
-      if (err) *err = "tts sink aborted";
-      return false;
-    }
-  }
-  return true;
+  return emit_pcm(*pcm, on_chunk, err);
 }
 
 }  // namespace intercom
-

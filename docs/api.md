@@ -10,6 +10,16 @@ Returns JSON readiness for whisper, kokoro, and Arbiter reachability.
 - `200` when whisper + kokoro are ready (Arbiter may still be down).
 - `503` if speech binaries/models are missing.
 
+`whisper.detail` / `kokoro.detail` say `server http://127.0.0.1:8092` (or `8091`) when the warm daemons are up.
+
+Each turn prints one stderr line:
+
+```
+intercom latency turn=… path=arbiter stt_ms=… conv_ms=… arbiter_ttft_ms=… first_sentence_ms=… kokoro_ms=… kokoro_total_ms=… ttfa_ms=… ttfa_kind=ack|answer|fast first_answer_ms=…
+```
+
+`ttfa_ms` is time-to-first-audio on the chunked PCM response. `-1` means that stage did not run.
+
 ## `POST /v1/utterance`
 
 Push-to-talk audio in → chunked PCM out.

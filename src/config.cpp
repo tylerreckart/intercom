@@ -120,6 +120,10 @@ Config Config::load(const std::string& path) {
     c.whisper.model = expand_home(require_string(w, "model", c.whisper.model));
     c.whisper.timeout_seconds = require_int(w, "timeout_seconds", c.whisper.timeout_seconds);
     c.whisper.language = require_string(w, "language", c.whisper.language);
+    c.whisper.use_server = require_bool(w, "use_server", c.whisper.use_server);
+    c.whisper.server_binary = expand_home(require_string(w, "server_binary", c.whisper.server_binary));
+    c.whisper.server_url = require_string(w, "server_url", c.whisper.server_url);
+    c.whisper.server_port = require_int(w, "server_port", c.whisper.server_port);
   }
 
   if (j.contains("kokoro") && j["kokoro"].is_object()) {
@@ -129,6 +133,11 @@ Config Config::load(const std::string& path) {
     c.kokoro.speed = require_number(k, "speed", c.kokoro.speed);
     c.kokoro.model = expand_home(require_string(k, "model", c.kokoro.model));
     c.kokoro.voices = expand_home(require_string(k, "voices", c.kokoro.voices));
+    c.kokoro.use_server = require_bool(k, "use_server", c.kokoro.use_server);
+    c.kokoro.server_script =
+        expand_home(require_string(k, "server_script", c.kokoro.server_script));
+    c.kokoro.server_url = require_string(k, "server_url", c.kokoro.server_url);
+    c.kokoro.server_port = require_int(k, "server_port", c.kokoro.server_port);
   }
 
   if (j.contains("filler") && j["filler"].is_object()) {

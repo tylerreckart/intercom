@@ -8,18 +8,31 @@
 
 namespace intercom {
 
+struct ParsedHttpUrl {
+  std::string host;
+  int port = 80;
+  std::string path;
+  bool https = false;
+};
+
 std::string expand_home(std::string path);
 std::string make_turn_id();
 bool file_exists(const std::string& path);
 bool executable_on_path_or_file(const std::string& binary);
+std::optional<ParsedHttpUrl> parse_http_url(const std::string& url);
 
-// Write mono s16le PCM as a minimal WAV file.
+// Encode/decode mono s16le PCM as a minimal WAV.
+std::vector<std::uint8_t> encode_wav_s16le(const std::vector<std::uint8_t>& pcm,
+                                           int sample_rate,
+                                           int channels);
 bool write_wav_s16le(const std::string& path,
                      const std::vector<std::uint8_t>& pcm,
                      int sample_rate,
                      int channels);
-
-// Read WAV (PCM s16le) into raw PCM bytes; returns sample rate via out param.
+std::optional<std::vector<std::uint8_t>> parse_wav_s16le(const std::uint8_t* data,
+                                                         std::size_t len,
+                                                         int* out_sample_rate,
+                                                         int* out_channels);
 std::optional<std::vector<std::uint8_t>> read_wav_s16le(const std::string& path,
                                                         int* out_sample_rate,
                                                         int* out_channels);

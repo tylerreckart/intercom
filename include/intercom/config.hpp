@@ -10,6 +10,10 @@ struct WhisperConfig {
   std::string model;
   int timeout_seconds = 120;
   std::string language = "en";
+  bool use_server = true;
+  std::string server_binary;
+  std::string server_url;
+  int server_port = 8092;
 };
 
 struct KokoroConfig {
@@ -18,6 +22,10 @@ struct KokoroConfig {
   double speed = 1.0;
   std::string model;
   std::string voices;
+  bool use_server = true;
+  std::string server_script;
+  std::string server_url;
+  int server_port = 8091;
 };
 
 struct FillerConfig {
@@ -26,15 +34,16 @@ struct FillerConfig {
   std::string api_base_url = "https://openrouter.ai/api/v1";
   std::string api_key;
   std::string model = "deepseek/deepseek-v4-flash";
-  // Speak a local ack this many ms after the turn starts (0 = disabled).
-  int instant_ack_ms = 400;
-  // Earliest ms to speak the LLM contextual phrase (unless instant ack already played).
-  int min_silence_ms = 350;
-  int followup_silence_ms = 6000;
-  int max_followups = 1;
+  // Speak a local backchannel this many ms after the turn starts (0 = disabled).
+  // High enough that a fast Arbiter reply skips filler entirely.
+  int instant_ack_ms = 700;
+  // Earliest ms to speak an LLM phrase when instant ack is off.
+  int min_silence_ms = 1100;
+  int followup_silence_ms = 8000;
+  int max_followups = 0;
   int timeout_ms = 2500;
-  int max_tokens = 24;
-  double temperature = 0.7;
+  int max_tokens = 16;
+  double temperature = 0.6;
 };
 
 struct Config {

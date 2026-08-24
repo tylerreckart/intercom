@@ -32,6 +32,8 @@ Run Intercom beside `arbiter --api` on the same host:
 
 - `arbiter_base_url`: `http://127.0.0.1:8080`
 - Intercom listen: `127.0.0.1:8090` (put TLS/auth on a reverse proxy for LAN/WAN devices)
+- Warm Whisper: `127.0.0.1:8092` (`whisper-server`, spawned by Intercom)
+- Warm Kokoro: `127.0.0.1:8091` (`scripts/kokoro_server.py`, spawned by Intercom)
 
 ## Generating a test PCM file
 

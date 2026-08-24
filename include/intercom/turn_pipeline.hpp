@@ -65,7 +65,8 @@ class TurnPipeline {
   TurnResult run_text_utterance(const std::string& device_id,
                                 const std::string& transcript,
                                 AudioSink& sink,
-                                std::string turn_id = {});
+                                std::string turn_id = {},
+                                int stt_ms = -1);
 
   bool cancel_turn(const std::string& turn_id, std::string* err);
 

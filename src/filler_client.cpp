@@ -4,6 +4,7 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <cctype>
 #include <memory>
 #include <optional>
 #include <random>
@@ -72,13 +73,39 @@ std::string first_line(std::string s) {
   return trim(s);
 }
 
+std::string cap_words(std::string s, std::size_t max_words) {
+  s = trim(s);
+  if (max_words == 0 || s.empty()) return s;
+  std::size_t words = 0;
+  bool in_word = false;
+  for (std::size_t i = 0; i < s.size(); ++i) {
+    const bool space = std::isspace(static_cast<unsigned char>(s[i])) != 0;
+    if (space) {
+      in_word = false;
+      continue;
+    }
+    if (in_word) continue;
+    in_word = true;
+    ++words;
+    if (words > max_words) {
+      while (i > 0 && !std::isspace(static_cast<unsigned char>(s[i - 1]))) --i;
+      s.resize(i);
+      break;
+    }
+  }
+  while (!s.empty() && (s.back() == ',' || s.back() == ';' || s.back() == ':')) s.pop_back();
+  return trim(s);
+}
+
 std::string build_system_prompt(FillerStage stage) {
   if (stage == FillerStage::FollowUp) {
-    return "Arthur, British voice assistant. Still working. One new thinking-aloud phrase, "
-           "8-12 words. Output only the phrase.";
+    return "Arthur, a British voice on a home intercom. The user is still waiting. "
+           "One quiet aside, 2-4 words, like 'still looking' or 'one moment'. "
+           "Not a status report. Output only the phrase.";
   }
-  return "Arthur, British voice assistant. User just spoke. One brief thinking-aloud phrase "
-         "acknowledging them, 8-12 words. Output only the phrase.";
+  return "Arthur, a British voice on a home intercom. The user just asked something. "
+         "One short aside, 3-5 words, like 'right, let's see' or 'I'll have a look'. "
+         "Do not narrate that you are thinking or working. Output only the phrase.";
 }
 
 std::string build_user_prompt(const std::string& transcript,
@@ -93,15 +120,15 @@ std::string build_user_prompt(const std::string& transcript,
 
 std::string fallback_phrase(FillerStage stage) {
   static const char* kInitial[] = {
-      "Just a moment.",
-      "Let me think on that.",
-      "Right, give me a second.",
-      "Hmm, let me see.",
+      "Right, let's see.",
+      "I'll have a look.",
+      "Just a tick.",
+      "Let me check.",
   };
   static const char* kFollowUp[] = {
-      "Still working on that.",
-      "Nearly there.",
-      "Bear with me a moment.",
+      "Still looking.",
+      "One moment.",
+      "Hang on.",
   };
   static thread_local std::mt19937 rng{std::random_device{}()};
   if (stage == FillerStage::FollowUp) {
@@ -112,23 +139,31 @@ std::string fallback_phrase(FillerStage stage) {
   return kInitial[dist(rng)];
 }
 
-std::string instant_ack_phrase() {
-  static const char* kInstant[] = {
-      "Right.",
-      "Mm-hmm.",
-      "Okay.",
-      "One sec.",
-  };
-  static thread_local std::mt19937 rng{std::random_device{}()};
-  std::uniform_int_distribution<std::size_t> dist(0, 3);
-  return kInstant[dist(rng)];
-}
-
 }  // namespace
 
 FillerClient::FillerClient(FillerConfig config) : config_(std::move(config)) {}
 
-std::string FillerClient::instant_ack() { return instant_ack_phrase(); }
+std::vector<std::string> FillerClient::instant_ack_phrases() {
+  return {
+      "Right, let's see.",
+      "I'll have a look.",
+      "Just a tick.",
+      "Leave it with me.",
+      "Let me check.",
+      "One moment.",
+  };
+}
+
+std::string FillerClient::instant_ack() {
+  const auto phrases = instant_ack_phrases();
+  static thread_local std::mt19937 rng{std::random_device{}()};
+  static thread_local std::size_t last = phrases.size();
+  std::uniform_int_distribution<std::size_t> dist(0, phrases.size() - 1);
+  std::size_t i = dist(rng);
+  if (phrases.size() > 1 && i == last) i = (i + 1) % phrases.size();
+  last = i;
+  return phrases[i];
+}
 
 std::string FillerClient::generate(const std::string& transcript,
                                    FillerStage stage,
@@ -203,13 +238,14 @@ std::string FillerClient::generate(const std::string& transcript,
       if (err) *err = "filler: missing message content";
       return fallback_phrase(stage);
     }
-    std::string phrase = first_line(
-        strip_wrapping_quotes(choice["message"]["content"].get<std::string>()));
+    std::string phrase = cap_words(
+        first_line(strip_wrapping_quotes(choice["message"]["content"].get<std::string>())),
+        stage == FillerStage::FollowUp ? 4 : 5);
     if (phrase.empty()) {
       if (err) *err = "filler: empty message content";
       return fallback_phrase(stage);
     }
-    if (phrase.size() > 160) phrase.resize(160);
+    if (phrase.size() > 80) phrase.resize(80);
     return phrase;
   } catch (const std::exception& e) {
     if (err) *err = std::string("filler parse: ") + e.what();

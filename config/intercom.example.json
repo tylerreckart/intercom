@@ -16,25 +16,32 @@
     "voice": "af_heart",
     "speed": 1.0,
     "model": "~/.intercom/models/kokoro/kokoro-v1.0.onnx",
-    "voices": "~/.intercom/models/kokoro/voices-v1.0.bin"
+    "voices": "~/.intercom/models/kokoro/voices-v1.0.bin",
+    "use_server": true,
+    "server_url": "",
+    "server_port": 8091
   },
   "whisper": {
     "binary": "whisper-cli",
     "model": "~/.intercom/models/ggml-base.en.bin",
     "timeout_seconds": 120,
-    "language": "en"
+    "language": "en",
+    "use_server": true,
+    "server_binary": "whisper-server",
+    "server_url": "",
+    "server_port": 8092
   },
   "filler": {
     "enabled": true,
     "api_base_url": "https://openrouter.ai/api/v1",
     "api_key": "",
     "model": "deepseek/deepseek-v4-flash",
-    "instant_ack_ms": 400,
-    "min_silence_ms": 350,
-    "followup_silence_ms": 6000,
-    "max_followups": 1,
+    "instant_ack_ms": 700,
+    "min_silence_ms": 1100,
+    "followup_silence_ms": 8000,
+    "max_followups": 0,
     "timeout_ms": 2500,
-    "max_tokens": 24,
-    "temperature": 0.7
+    "max_tokens": 16,
+    "temperature": 0.6
   }
 }
