@@ -1,0 +1,5 @@
+(version 1)
+(rule "RV1_R4_courtyard"
+  (constraint courtyard_clearance (min -1mm))
+  (condition "(A.Reference == 'RV1' && B.Reference == 'R4') || (A.Reference == 'R4' && B.Reference == 'RV1')")
+)
