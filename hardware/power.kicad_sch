@@ -1756,12 +1756,6 @@
 		(uuid "3b81a489-72f1-4602-9dcd-bf8551201aae")
 	)
 	(junction
-		(at 64.77 88.9)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "3f2fd504-8753-4347-82b5-8e3a00509811")
-	)
-	(junction
 		(at 64.77 86.36)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1772,6 +1766,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "60e47256-4c11-4ec7-8ad5-919c60a1a7b7")
+	)
+	(junction
+		(at 64.77 88.9)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "623eba47-2f26-4e8b-99e9-c3ee75894293")
 	)
 	(junction
 		(at 128.27 91.44)
@@ -2773,7 +2773,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "2ef20fd6-4930-4040-97dc-2f45549da49f")
-		(property "Reference" "#FLG5V"
+		(property "Reference" "#FLG5V01"
 			(at 251.46 66.04 0)
 			(hide yes)
 			(show_name no)
@@ -2834,7 +2834,7 @@
 		(instances
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294/b7c2e91a-4f3d-4a8e-9c1b-2e5d8a7f6b40"
-					(reference "#FLG5V")
+					(reference "#FLG5V01")
 					(unit 1)
 				)
 			)
@@ -3066,7 +3066,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "45fcb0c4-7911-4d6b-9b58-8234a2f8279d")
-		(property "Reference" "#FLGGND"
+		(property "Reference" "#FLGGND01"
 			(at 62.23 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -3127,7 +3127,7 @@
 		(instances
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294/b7c2e91a-4f3d-4a8e-9c1b-2e5d8a7f6b40"
-					(reference "#FLGGND")
+					(reference "#FLGGND01")
 					(unit 1)
 				)
 			)
@@ -4166,7 +4166,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "ad79f16f-a3f1-4c89-bb0d-accea24bcfab")
-		(property "Reference" "#FLGVBAT"
+		(property "Reference" "#FLGVBAT01"
 			(at 99.06 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -4227,7 +4227,7 @@
 		(instances
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294/b7c2e91a-4f3d-4a8e-9c1b-2e5d8a7f6b40"
-					(reference "#FLGVBAT")
+					(reference "#FLGVBAT01")
 					(unit 1)
 				)
 			)

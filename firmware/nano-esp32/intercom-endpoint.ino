@@ -22,7 +22,7 @@ struct HttpHeaders {
 };
 
 // Thin PCM endpoint for Intercom (docs/device.md):
-// hold PTT -> record 16 kHz s16le -> POST /v1/utterance -> play chunked PCM.
+// hold PTT -> record 24 kHz s16le -> POST /v1/utterance -> play chunked PCM.
 // Serial (idle): tone | health | ping
 
 #define I2S_PORT I2S_NUM_0

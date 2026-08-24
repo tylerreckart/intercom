@@ -6,10 +6,10 @@ Target hardware: **ESP32-S3 with PSRAM** (e.g. Arduino Nano ESP32) + I2S mic (IN
 
 | Direction | Format |
 |-----------|--------|
-| Mic → Intercom | Mono PCM s16le, **16 kHz**, push-to-talk HTTP body |
-| Intercom → speaker | Mono PCM s16le, **16 kHz**, chunked HTTP response |
+| Mic → Intercom | Mono PCM s16le, **24 kHz**, push-to-talk HTTP body |
+| Intercom → speaker | Mono PCM s16le, **24 kHz**, chunked HTTP response |
 
-Content-Type: `audio/L16; rate=16000; channels=1`
+Content-Type: `audio/L16; rate=24000; channels=1`
 
 ## Session model
 
@@ -37,7 +37,7 @@ Run Intercom beside `arbiter --api` on the same host:
 
 ```bash
 # 1s of silence (or replace with sox/ffmpeg from mic)
-ffmpeg -f lavfi -i "sine=frequency=440:duration=1" -ar 16000 -ac 1 -f s16le utterance.pcm
+ffmpeg -f lavfi -i "sine=frequency=440:duration=1" -ar 24000 -ac 1 -f s16le utterance.pcm
 
 # Or speak via text path (no whisper needed for path test):
 curl -N -H "Authorization: Bearer dev-device-secret-change-me" \
@@ -46,7 +46,7 @@ curl -N -H "Authorization: Bearer dev-device-secret-change-me" \
   -d '{"text":"status"}' -o reply.pcm \
   http://127.0.0.1:8090/v1/utterance/text
 
-ffplay -f s16le -ar 16000 -ac 1 reply.pcm
+ffplay -f s16le -ar 24000 -ac 1 reply.pcm
 ```
 
 ## WebSocket (v1.1)

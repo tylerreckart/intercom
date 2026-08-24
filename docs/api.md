@@ -20,14 +20,14 @@ Push-to-talk audio in → chunked PCM out.
 |--------|----------|-------------|
 | `Authorization` | yes | `Bearer <device_token>` |
 | `X-Device-Id` | yes | Stable device id (session key) |
-| `Content-Type` | recommended | `audio/L16; rate=16000; channels=1` |
+| `Content-Type` | recommended | `audio/L16; rate=24000; channels=1` |
 | `X-Sample-Rate` | no | Overrides rate if Content-Type omitted |
 
-Body: raw mono PCM **s16le** (default 16 kHz).
+Body: raw mono PCM **s16le** (default 24 kHz).
 
 ### Response
 
-`Content-Type: audio/L16; rate=16000; channels=1` (chunked).
+`Content-Type: audio/L16; rate=24000; channels=1` (chunked).
 
 | Header | Description |
 |--------|-------------|
@@ -45,7 +45,7 @@ Errors before streaming are JSON (`401`, `400`, `502`).
 curl -N \
   -H "Authorization: Bearer dev-device-secret-change-me" \
   -H "X-Device-Id: speaker-1" \
-  -H "Content-Type: audio/L16; rate=16000; channels=1" \
+  -H "Content-Type: audio/L16; rate=24000; channels=1" \
   --data-binary @utterance.pcm \
   --output reply.pcm \
   -D headers.txt \
