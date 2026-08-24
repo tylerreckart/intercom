@@ -1,5 +1,7 @@
 # Intercom
 
+![PCB render](.github/pcb_render.jpg)
+
 Local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Kokoro** TTS, and Arbiter stays text + SSE in the middle.
 
 ```
