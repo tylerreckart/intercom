@@ -16,16 +16,31 @@ struct WhisperConfig {
   int server_port = 8092;
 };
 
+struct SpeechDspConfig {
+  bool enabled = true;
+  double highpass_hz = 70.0;
+  double presence_hz = 2600.0;
+  double presence_db = 1.5;
+  double presence_q = 0.8;
+  double compressor_threshold_db = -16.0;
+  double compressor_ratio = 2.2;
+  double compressor_attack_ms = 8.0;
+  double compressor_release_ms = 90.0;
+  double makeup_db = 1.0;
+  double limiter_db = -1.0;
+};
+
 struct KokoroConfig {
   std::string binary = "kokoro-tts";
-  std::string voice = "af_heart";
-  double speed = 1.0;
+  std::string voice = "bm_lewis";
+  double speed = 0.96;
   std::string model;
   std::string voices;
   bool use_server = true;
   std::string server_script;
   std::string server_url;
   int server_port = 8091;
+  SpeechDspConfig dsp;
 };
 
 struct FillerConfig {

@@ -286,6 +286,50 @@ void fade_s16le_mono_edges(std::vector<std::uint8_t>* pcm,
   }
 }
 
+int speech_pause_ms(std::string_view text) {
+  while (!text.empty() &&
+         std::isspace(static_cast<unsigned char>(text.back()))) {
+    text.remove_suffix(1);
+  }
+  if (text.empty()) return 0;
+  switch (text.back()) {
+    case ',':
+      return 110;
+    case ';':
+    case ':':
+      return 150;
+    case '!':
+      return 190;
+    case '?':
+      return 260;
+    case '.':
+      return 200;
+    default:
+      return 180;
+  }
+}
+
+std::vector<std::string> coalesce_speech_sentences(
+    const std::vector<std::string>& sentences,
+    std::size_t max_chars) {
+  std::vector<std::string> out;
+  std::string chunk;
+  for (const auto& sentence : sentences) {
+    const std::string clean = trim(sentence);
+    if (clean.empty()) continue;
+    const std::size_t joined_size =
+        chunk.empty() ? clean.size() : chunk.size() + 1 + clean.size();
+    if (!chunk.empty() && joined_size > max_chars) {
+      out.push_back(std::move(chunk));
+      chunk.clear();
+    }
+    if (!chunk.empty()) chunk.push_back(' ');
+    chunk += clean;
+  }
+  if (!chunk.empty()) out.push_back(std::move(chunk));
+  return out;
+}
+
 std::string to_lower(std::string s) {
   for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   return s;

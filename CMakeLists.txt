@@ -34,6 +34,8 @@ add_executable(intercom
   src/config.cpp
   src/stt_whisper.cpp
   src/tts_kokoro.cpp
+  src/audio_dsp.cpp
+  src/speech_delivery.cpp
   src/arbiter_client.cpp
   src/filler_client.cpp
   src/session_store.cpp
@@ -66,7 +68,7 @@ endif()
 
 install(TARGETS intercom RUNTIME DESTINATION bin)
 install(FILES config/intercom.example.json config/arthur.agent.json DESTINATION share/intercom)
-install(FILES scripts/kokoro_server.py DESTINATION share/intercom)
+install(FILES scripts/kokoro_server.py scripts/voice_audition.py DESTINATION share/intercom)
 
 enable_testing()
 
@@ -96,6 +98,17 @@ target_include_directories(test_speakable PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 add_test(NAME test_speakable COMMAND test_speakable)
+
+add_executable(test_speech_dsp
+  tests/test_speech_dsp.cpp
+  src/audio_dsp.cpp
+  src/speech_delivery.cpp
+  src/util.cpp
+)
+target_include_directories(test_speech_dsp PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_test(NAME test_speech_dsp COMMAND test_speech_dsp)
 
 add_executable(test_fast_path
   tests/test_fast_path.cpp

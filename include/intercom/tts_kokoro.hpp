@@ -1,6 +1,7 @@
 #pragma once
 
 #include "intercom/config.hpp"
+#include "intercom/speech_delivery.hpp"
 #include "intercom/tts.hpp"
 
 #include <memory>
@@ -31,6 +32,9 @@ class KokoroTts : public TtsProvider {
  private:
   bool emit_pcm(const std::vector<std::uint8_t>& pcm, PcmChunkFn on_chunk, std::string* err);
   bool synthesize_live(const std::string& text, PcmChunkFn on_chunk, std::string* err);
+  bool synthesize_http_stream(const std::string& text,
+                              PcmChunkFn on_chunk,
+                              std::string* err);
   bool synthesize_http(const std::string& text, PcmChunkFn on_chunk, std::string* err);
   bool synthesize_cli(const std::string& text, PcmChunkFn on_chunk, std::string* err);
   bool ensure_server(std::string* err);
@@ -41,6 +45,9 @@ class KokoroTts : public TtsProvider {
   std::string server_url_;
   std::unique_ptr<ManagedServer> child_;
   mutable std::mutex mu_;
+  int pending_pause_ms_ = 200;
+  double pending_speed_ = 0.96;
+  SpeechDelivery pending_delivery_ = SpeechDelivery::Neutral;
   std::unordered_map<std::string, std::vector<std::uint8_t>> cache_;
 };
 

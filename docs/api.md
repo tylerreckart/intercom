@@ -97,3 +97,24 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 Default agent: **Arthur** (`config/arthur.agent.json`).
 
 Reply PCM can start before the SSE `done` event: Intercom synthesizes each completed sentence as depth-0 text deltas arrive (Kokoro latency per sentence, not full-turn latency). Remaining text is flushed after `done`; already-spoken sentences are not repeated.
+
+Related short sentences received together are synthesized as one phrase so
+prosody carries across them. PCM is faded once at the bridge and followed by
+punctuation-aware pauses (short after commas, longer after questions). Fillers
+wait for an actual tool call to remain active before speaking and use a short
+tool-appropriate acknowledgement.
+
+At 24 kHz, Intercom uses Kokoro's chunked raw-PCM endpoint and forwards each
+native phoneme batch as soon as it is generated. Older external Kokoro servers,
+and configurations requiring resampling, fall back to the complete-WAV
+endpoint.
+
+Arthur's delivery is inferred from each spoken phrase. Greetings and courtesies
+are slightly warmer and more measured; tool-wait asides are quieter and briefer;
+warnings are firmer and leave a little more space. The adjustments are subtle
+speed, gain, and pause changes on top of the selected Kokoro voice.
+
+Kokoro output passes through a stateful speech DSP chain before reaching the
+device: a 70 Hz high-pass filter, a gentle 2.6 kHz presence lift, envelope
+compression, makeup gain, and a minus-one-decibel limiter. All parameters are
+under `kokoro.dsp`; set `enabled` to `false` for a bit-exact bypass.

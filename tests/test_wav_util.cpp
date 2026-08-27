@@ -61,6 +61,20 @@ int main() {
   CHECK(quiet.size() == 20);
   CHECK(quiet[0] == 0);
 
+  CHECK(intercom::speech_pause_ms("Wait,") == 110);
+  CHECK(intercom::speech_pause_ms("Really?") == 260);
+  CHECK(intercom::speech_pause_ms("Right.") == 200);
+  CHECK(intercom::speech_pause_ms("Right!  ") == 190);
+
+  const std::vector<std::string> sentences = {
+      "Good morning, sir.", "How can I help?", std::string(220, 'x') + "."};
+  const auto chunks = intercom::coalesce_speech_sentences(sentences);
+  CHECK(chunks.size() == 2);
+  if (chunks.size() == 2) {
+    CHECK(chunks[0] == "Good morning, sir. How can I help?");
+    CHECK(chunks[1] == sentences[2]);
+  }
+
   if (g_fails != 0) {
     std::cerr << g_fails << " failure(s)\n";
     return 1;

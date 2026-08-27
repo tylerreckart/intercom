@@ -1,4 +1,5 @@
 #include "intercom/tts_kokoro.hpp"
+#include "intercom/audio_dsp.hpp"
 #include "intercom/filler_client.hpp"
 #include "intercom/managed_server.hpp"
 #include "intercom/util.hpp"
@@ -219,6 +220,12 @@ bool KokoroTts::ready(std::string* detail) const {
 void KokoroTts::warmup() {
   std::string err;
   for (const auto& phrase : FillerClient::instant_ack_phrases()) {
+    pending_delivery_ = classify_speech_delivery(phrase);
+    pending_speed_ = std::clamp(
+        cfg_.speed * delivery_speed_multiplier(pending_delivery_), 0.5, 2.0);
+    pending_pause_ms_ = std::max(
+        0, speech_pause_ms(phrase) +
+               delivery_pause_adjustment_ms(pending_delivery_));
     std::vector<std::uint8_t> pcm;
     const bool ok = synthesize_live(phrase,
                                     [&](const std::uint8_t* data, std::size_t len) {
@@ -243,23 +250,35 @@ void KokoroTts::warmup() {
 bool KokoroTts::emit_pcm(const std::vector<std::uint8_t>& pcm,
                          PcmChunkFn on_chunk,
                          std::string* err) {
-  // Soften clip edges and leave a breath so sentence stitches don't click or cut off.
-  std::vector<std::uint8_t> shaped = pcm;
-  fade_s16le_mono_edges(&shaped, target_sample_rate_, 18, 32);
-  const auto tail = silence_s16le_mono(target_sample_rate_, 220);
+  // Shape the trailing edge once here (not in the Python server). The device
+  // already fades in the start of a response to protect the amplifier, so a
+  // second leading fade would swallow initial consonants.
+  SpeechDspProcessor processor(
+      cfg_.dsp, target_sample_rate_, delivery_gain_db(pending_delivery_));
+  std::vector<std::uint8_t> shaped = processor.process(pcm);
+  fade_s16le_mono_edges(&shaped, target_sample_rate_, 0, 14);
+  const auto tail =
+      silence_s16le_mono(target_sample_rate_, pending_pause_ms_);
   shaped.insert(shaped.end(), tail.begin(), tail.end());
   return emit_chunks(shaped, on_chunk, err);
 }
 
 bool KokoroTts::synthesize(const std::string& text, PcmChunkFn on_chunk, std::string* err) {
   if (text.empty()) return true;
+  pending_delivery_ = classify_speech_delivery(text);
+  pending_speed_ = std::clamp(
+      cfg_.speed * delivery_speed_multiplier(pending_delivery_), 0.5, 2.0);
+  pending_pause_ms_ = std::max(
+      0, speech_pause_ms(text) +
+             delivery_pause_adjustment_ms(pending_delivery_));
   std::vector<std::uint8_t> cached;
   {
     std::lock_guard<std::mutex> lk(mu_);
     auto it = cache_.find(text);
     if (it != cache_.end()) cached = it->second;
   }
-  if (!cached.empty()) return emit_pcm(cached, on_chunk, err);
+  // Warmup caches the already-shaped stream; do not fade or pad it twice.
+  if (!cached.empty()) return emit_chunks(cached, on_chunk, err);
   return synthesize_live(text, on_chunk, err);
 }
 
@@ -269,6 +288,15 @@ bool KokoroTts::synthesize_live(const std::string& text,
   std::lock_guard<std::mutex> lk(mu_);
   if (!server_url_.empty()) {
     std::string http_err;
+    if (target_sample_rate_ == 24000 &&
+        synthesize_http_stream(text, on_chunk, &http_err)) {
+      return true;
+    }
+    if (http_err == "tts sink aborted" ||
+        http_err.rfind("kokoro stream interrupted", 0) == 0) {
+      if (err) *err = http_err;
+      return false;
+    }
     if (synthesize_http(text, on_chunk, &http_err)) return true;
     if (err) *err = http_err;
     if (cfg_.server_url.empty()) {
@@ -280,6 +308,84 @@ bool KokoroTts::synthesize_live(const std::string& text,
     }
   }
   return synthesize_cli(text, on_chunk, err);
+}
+
+bool KokoroTts::synthesize_http_stream(const std::string& text,
+                                       PcmChunkFn on_chunk,
+                                       std::string* err) {
+  auto parsed = parse_http_url(server_url_);
+  if (!parsed) {
+    if (err) *err = "invalid kokoro server_url";
+    return false;
+  }
+
+  httplib::Client cli(parsed->host, parsed->port);
+  cli.set_connection_timeout(5, 0);
+  cli.set_read_timeout(120, 0);
+  cli.set_write_timeout(30, 0);
+
+  httplib::Request req;
+  req.method = "POST";
+  req.path = parsed->path + "/v1/tts/stream";
+  req.set_header("Content-Type", "application/json");
+  req.set_header("Accept", "audio/L16");
+  req.body =
+      nlohmann::json({{"text", text}, {"speed", pending_speed_}}).dump();
+
+  bool sink_aborted = false;
+  bool delivered_audio = false;
+  int response_status = 0;
+  SpeechDspProcessor processor(
+      cfg_.dsp, target_sample_rate_, delivery_gain_db(pending_delivery_));
+  req.response_handler = [&](const httplib::Response& response) {
+    response_status = response.status;
+    return true;
+  };
+  req.content_receiver = [&](const char* data, std::size_t len,
+                             std::uint64_t, std::uint64_t) {
+    if (len == 0) return true;
+    if (response_status != 200) return true;
+    delivered_audio = true;
+    const auto processed = processor.process(
+        reinterpret_cast<const std::uint8_t*>(data), len);
+    if (on_chunk && !processed.empty() &&
+        !on_chunk(processed.data(), processed.size())) {
+      sink_aborted = true;
+      return false;
+    }
+    return true;
+  };
+
+  auto res = cli.send(req);
+  if (sink_aborted) {
+    if (err) *err = "tts sink aborted";
+    return false;
+  }
+  if (!res) {
+    if (err) {
+      *err = delivered_audio ? "kokoro stream interrupted after audio"
+                             : "kokoro stream: connection failed";
+    }
+    return false;
+  }
+  if (res->status == 404) {
+    if (err) *err = "kokoro stream endpoint unavailable";
+    return false;
+  }
+  if (res->status != 200) {
+    if (err) {
+      *err = "kokoro stream HTTP " + std::to_string(res->status);
+    }
+    return false;
+  }
+  if (!delivered_audio) {
+    if (err) *err = "kokoro stream: empty audio";
+    return false;
+  }
+
+  const auto tail =
+      silence_s16le_mono(target_sample_rate_, speech_pause_ms(text));
+  return emit_chunks(tail, on_chunk, err);
 }
 
 bool KokoroTts::synthesize_http(const std::string& text,
@@ -294,7 +400,7 @@ bool KokoroTts::synthesize_http(const std::string& text,
   cli.set_connection_timeout(5, 0);
   cli.set_read_timeout(120, 0);
   cli.set_write_timeout(30, 0);
-  nlohmann::json body = {{"text", text}};
+  nlohmann::json body = {{"text", text}, {"speed", pending_speed_}};
   const std::string path = parsed->path + "/v1/tts";
   auto res = cli.Post(path.c_str(), body.dump(), "application/json");
   if (!res) {
@@ -347,7 +453,7 @@ bool KokoroTts::synthesize_cli(const std::string& text,
       << " " << shell_quote(text_path)
       << " " << shell_quote(wav_path)
       << " --voice " << shell_quote(cfg_.voice)
-      << " --speed " << cfg_.speed
+      << " --speed " << pending_speed_
       << " --format wav"
       << " --model " << shell_quote(cfg_.model)
       << " --voices " << shell_quote(cfg_.voices)

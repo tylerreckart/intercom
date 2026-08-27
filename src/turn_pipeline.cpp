@@ -2,6 +2,7 @@
 #include "intercom/speakable.hpp"
 #include "intercom/util.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
@@ -30,6 +31,7 @@ struct ArbiterRunState {
   std::atomic<bool> got_first_delta{false};
   std::atomic<bool> started_answer{false};
   std::atomic<bool> saw_tool{false};
+  std::atomic<int> tool_started_ms{-1};
   std::atomic<bool> done{false};
   bool streamed = false;
   bool done_ok = false;
@@ -37,6 +39,7 @@ struct ArbiterRunState {
   std::string full_content;
   std::string stream_err;
   std::string speak_buf;
+  std::string tool_name;
   std::mutex speak_mu;
 };
 
@@ -46,6 +49,22 @@ std::size_t non_space_count(std::string_view s) {
     if (!std::isspace(static_cast<unsigned char>(c))) ++n;
   }
   return n;
+}
+
+std::string natural_tool_ack(std::string_view tool) {
+  if (tool.find("search") != std::string_view::npos ||
+      tool.find("fetch") != std::string_view::npos ||
+      tool.find("browse") != std::string_view::npos) {
+    return "I'll have a look.";
+  }
+  if (tool.find("schedule") != std::string_view::npos) {
+    return "One moment, sir.";
+  }
+  if (tool.find("read") != std::string_view::npos ||
+      tool.find("list") != std::string_view::npos) {
+    return "Let me check.";
+  }
+  return "Just a moment.";
 }
 
 }  // namespace
@@ -242,7 +261,7 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   }
 
   const bool filler_enabled =
-      filler_ && filler_->enabled() && config_.filler.enabled &&
+      filler_ && config_.filler.enabled &&
       !withholds_fillers(result.transcript);
 
   std::future<std::string> initial_filler_future;
@@ -297,7 +316,12 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     std::lock_guard<std::mutex> lk(arb_state.speak_mu);
     arb_state.speak_buf += delta;
   };
-  cbs.on_tool_call = [&](const std::string&) {
+  cbs.on_tool_call = [&](const std::string& tool) {
+    {
+      std::lock_guard<std::mutex> lk(arb_state.speak_mu);
+      arb_state.tool_name = tool;
+    }
+    arb_state.tool_started_ms.store(elapsed_now());
     arb_state.saw_tool.store(true);
   };
   cbs.on_done = [&](bool ok, const std::string& content, const std::string& error) {
@@ -332,7 +356,7 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       std::lock_guard<std::mutex> lk(arb_state.speak_mu);
       sentences = flush_sentences(arb_state.speak_buf, final_flush);
     }
-    for (const auto& raw : sentences) {
+    for (const auto& raw : coalesce_speech_sentences(sentences)) {
       if (handle->cancel.load()) return false;
       if (non_space_count(raw) < 3) continue;
       if (first_sentence_ms < 0) first_sentence_ms = elapsed_now();
@@ -382,11 +406,18 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
                                 std::chrono::steady_clock::now() - turn_start)
                                 .count();
 
-    if (!hold_fillers && filler_enabled && config_.filler.instant_ack_ms > 0 &&
+    const int tool_started_ms = arb_state.tool_started_ms.load();
+    const int ack_delay_ms = std::max(1600, config_.filler.instant_ack_ms);
+    if (!hold_fillers && filler_enabled && tool_started_ms >= 0 &&
         !instant_spoken && spoken_filler.empty() &&
-        elapsed_ms >= config_.filler.instant_ack_ms) {
+        elapsed_ms - tool_started_ms >= ack_delay_ms) {
       instant_spoken = true;
-      if (!maybe_speak_filler(FillerClient::instant_ack(), true)) {
+      std::string tool_name;
+      {
+        std::lock_guard<std::mutex> lk(arb_state.speak_mu);
+        tool_name = arb_state.tool_name;
+      }
+      if (!maybe_speak_filler(natural_tool_ack(tool_name), true)) {
         result.error = err.empty() ? "tts failed" : err;
         handle->cancel.store(true);
         break;

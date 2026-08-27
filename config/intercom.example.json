@@ -13,13 +13,26 @@
   "fast_path": true,
   "kokoro": {
     "binary": "~/.intercom/venv-kokoro/bin/kokoro-tts",
-    "voice": "af_heart",
-    "speed": 1.0,
+    "voice": "bm_lewis",
+    "speed": 0.96,
     "model": "~/.intercom/models/kokoro/kokoro-v1.0.onnx",
     "voices": "~/.intercom/models/kokoro/voices-v1.0.bin",
     "use_server": true,
     "server_url": "",
-    "server_port": 8091
+    "server_port": 8091,
+    "dsp": {
+      "enabled": true,
+      "highpass_hz": 70.0,
+      "presence_hz": 2600.0,
+      "presence_db": 1.5,
+      "presence_q": 0.8,
+      "compressor_threshold_db": -16.0,
+      "compressor_ratio": 2.2,
+      "compressor_attack_ms": 8.0,
+      "compressor_release_ms": 90.0,
+      "makeup_db": 1.0,
+      "limiter_db": -1.0
+    }
   },
   "whisper": {
     "binary": "whisper-cli",

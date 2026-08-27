@@ -48,6 +48,15 @@ void fade_s16le_mono_edges(std::vector<std::uint8_t>* pcm,
                            int fade_in_ms,
                            int fade_out_ms);
 
+// Natural inter-utterance pause inferred from the spoken punctuation.
+int speech_pause_ms(std::string_view text);
+
+// Keep related short sentences in one TTS call so prosody does not restart
+// unnecessarily. Long chunks remain separate to bound synthesis latency.
+std::vector<std::string> coalesce_speech_sentences(
+    const std::vector<std::string>& sentences,
+    std::size_t max_chars = 220);
+
 std::string to_lower(std::string s);
 std::string trim(std::string_view s);
 

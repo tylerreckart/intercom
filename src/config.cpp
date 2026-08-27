@@ -138,6 +138,30 @@ Config Config::load(const std::string& path) {
         expand_home(require_string(k, "server_script", c.kokoro.server_script));
     c.kokoro.server_url = require_string(k, "server_url", c.kokoro.server_url);
     c.kokoro.server_port = require_int(k, "server_port", c.kokoro.server_port);
+    if (k.contains("dsp") && k["dsp"].is_object()) {
+      const auto& d = k["dsp"];
+      c.kokoro.dsp.enabled = require_bool(d, "enabled", c.kokoro.dsp.enabled);
+      c.kokoro.dsp.highpass_hz =
+          require_number(d, "highpass_hz", c.kokoro.dsp.highpass_hz);
+      c.kokoro.dsp.presence_hz =
+          require_number(d, "presence_hz", c.kokoro.dsp.presence_hz);
+      c.kokoro.dsp.presence_db =
+          require_number(d, "presence_db", c.kokoro.dsp.presence_db);
+      c.kokoro.dsp.presence_q =
+          require_number(d, "presence_q", c.kokoro.dsp.presence_q);
+      c.kokoro.dsp.compressor_threshold_db = require_number(
+          d, "compressor_threshold_db", c.kokoro.dsp.compressor_threshold_db);
+      c.kokoro.dsp.compressor_ratio =
+          require_number(d, "compressor_ratio", c.kokoro.dsp.compressor_ratio);
+      c.kokoro.dsp.compressor_attack_ms = require_number(
+          d, "compressor_attack_ms", c.kokoro.dsp.compressor_attack_ms);
+      c.kokoro.dsp.compressor_release_ms = require_number(
+          d, "compressor_release_ms", c.kokoro.dsp.compressor_release_ms);
+      c.kokoro.dsp.makeup_db =
+          require_number(d, "makeup_db", c.kokoro.dsp.makeup_db);
+      c.kokoro.dsp.limiter_db =
+          require_number(d, "limiter_db", c.kokoro.dsp.limiter_db);
+    }
   }
 
   if (j.contains("filler") && j["filler"].is_object()) {
