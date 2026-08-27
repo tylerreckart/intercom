@@ -242,7 +242,8 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   }
 
   const bool filler_enabled =
-      filler_ && filler_->enabled() && config_.filler.enabled;
+      filler_ && filler_->enabled() && config_.filler.enabled &&
+      !withholds_fillers(result.transcript);
 
   std::future<std::string> initial_filler_future;
   if (filler_enabled && config_.filler.instant_ack_ms <= 0) {
@@ -374,7 +375,8 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
     }
 
     const bool hold_fillers =
-        arb_state.got_first_delta.load() || arb_state.started_answer.load();
+        arb_state.got_first_delta.load() || arb_state.started_answer.load() ||
+        !arb_state.saw_tool.load();
 
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                 std::chrono::steady_clock::now() - turn_start)

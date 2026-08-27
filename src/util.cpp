@@ -251,6 +251,41 @@ std::vector<std::uint8_t> resample_s16le_mono(const std::vector<std::uint8_t>& p
   return out;
 }
 
+std::vector<std::uint8_t> silence_s16le_mono(int sample_rate, int milliseconds) {
+  if (sample_rate <= 0 || milliseconds <= 0) return {};
+  const std::size_t n =
+      static_cast<std::size_t>(sample_rate) * static_cast<std::size_t>(milliseconds) / 1000;
+  return std::vector<std::uint8_t>(n * 2, 0);
+}
+
+void fade_s16le_mono_edges(std::vector<std::uint8_t>* pcm,
+                           int sample_rate,
+                           int fade_in_ms,
+                           int fade_out_ms) {
+  if (!pcm || pcm->size() < 4 || sample_rate <= 0) return;
+  auto* samples = reinterpret_cast<std::int16_t*>(pcm->data());
+  const std::size_t n = pcm->size() / 2;
+  auto ramp = [](std::size_t i, std::size_t count) -> double {
+    const double t = static_cast<double>(i + 1) / static_cast<double>(count + 1);
+    return 0.5 - 0.5 * std::cos(3.14159265358979323846 * t);
+  };
+  const std::size_t n_in = std::min(
+      n / 2, static_cast<std::size_t>(std::max(0, fade_in_ms)) * static_cast<std::size_t>(sample_rate) /
+                 1000);
+  const std::size_t n_out = std::min(
+      n / 2, static_cast<std::size_t>(std::max(0, fade_out_ms)) * static_cast<std::size_t>(sample_rate) /
+                 1000);
+  for (std::size_t i = 0; i < n_in; ++i) {
+    const double g = ramp(i, n_in);
+    samples[i] = static_cast<std::int16_t>(std::lround(static_cast<double>(samples[i]) * g));
+  }
+  for (std::size_t i = 0; i < n_out; ++i) {
+    const double g = ramp(i, n_out);
+    const std::size_t idx = n - 1 - i;
+    samples[idx] = static_cast<std::int16_t>(std::lround(static_cast<double>(samples[idx]) * g));
+  }
+}
+
 std::string to_lower(std::string s) {
   for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   return s;

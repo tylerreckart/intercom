@@ -42,6 +42,12 @@ std::vector<std::uint8_t> resample_s16le_mono(const std::vector<std::uint8_t>& p
                                               int from_rate,
                                               int to_rate);
 
+std::vector<std::uint8_t> silence_s16le_mono(int sample_rate, int milliseconds);
+void fade_s16le_mono_edges(std::vector<std::uint8_t>* pcm,
+                           int sample_rate,
+                           int fade_in_ms,
+                           int fade_out_ms);
+
 std::string to_lower(std::string s);
 std::string trim(std::string_view s);
 

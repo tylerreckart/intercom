@@ -42,11 +42,32 @@ def voice_lang(voice: str, override: str | None) -> str:
     }.get(prefix, "en-us")
 
 
+def prepare_text(text: str) -> str:
+    text = text.strip()
+    if text and text[-1] not in ".!?,;:":
+        text += "."
+    return text
+
+
+def shape_audio(audio: np.ndarray, sr: int) -> np.ndarray:
+    samples = np.asarray(audio, dtype=np.float32)
+    fade = max(1, int(sr * 0.028))
+    if samples.size >= fade * 2:
+        ramp = 0.5 - 0.5 * np.cos(np.pi * np.linspace(0.0, 1.0, fade, dtype=np.float32))
+        samples[:fade] *= ramp
+        samples[-fade:] *= ramp[::-1]
+    pad = int(sr * 0.05)
+    if pad > 0:
+        samples = np.concatenate([samples, np.zeros(pad, dtype=np.float32)])
+    return samples
+
+
 def synthesize(text: str) -> tuple[bytes, int]:
     if ENGINE is None:
         raise RuntimeError("engine not loaded")
     with LOCK:
-        audio, sr = ENGINE.create(text, voice=VOICE, speed=SPEED, lang=LANG)
+        audio, sr = ENGINE.create(prepare_text(text), voice=VOICE, speed=SPEED, lang=LANG)
+    audio = shape_audio(audio, int(sr))
     pcm = np.clip(np.asarray(audio) * 32767.0, -32768, 32767).astype(np.int16)
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wav:

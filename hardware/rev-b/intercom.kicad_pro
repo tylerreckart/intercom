@@ -152,7 +152,7 @@
         "min_silk_clearance": 0.0,
         "min_text_height": 0.8,
         "min_text_thickness": 0.08,
-        "min_through_hole_diameter": 0.3,
+        "min_through_hole_diameter": 0.2,
         "min_track_width": 0.2,
         "min_via_annular_width": 0.1,
         "min_via_diameter": 0.5,
@@ -702,6 +702,14 @@
     [
       "b7c2e91a-4f3d-4a8e-9c1b-2e5d8a7f6b40",
       "Power"
+    ],
+    [
+      "c3e8a1b0-7d24-4f91-9c5e-2a6b8d4e1f70",
+      "MCU"
+    ],
+    [
+      "e9f2c4d1-8a35-4b06-b7c8-3d4e5f6a7b81",
+      "USB power"
     ]
   ],
   "text_variables": {},

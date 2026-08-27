@@ -28,6 +28,112 @@ bool starts_with(std::string_view s, std::size_t i, std::string_view p) {
   return i + p.size() <= s.size() && s.substr(i, p.size()) == p;
 }
 
+bool ordinal_suffix_at(std::string_view s, std::size_t i) {
+  if (i + 2 > s.size()) return false;
+  const char a = static_cast<char>(std::tolower(static_cast<unsigned char>(s[i])));
+  const char b = static_cast<char>(std::tolower(static_cast<unsigned char>(s[i + 1])));
+  if (!((a == 's' && b == 't') || (a == 'n' && b == 'd') || (a == 'r' && b == 'd') ||
+        (a == 't' && b == 'h'))) {
+    return false;
+  }
+  return i + 2 == s.size() || !is_alpha(s[i + 2]);
+}
+
+const char* expected_ordinal_suffix(int n) {
+  const int rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return "th";
+  switch (n % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+}
+
+std::string cardinal_under_100(int n);
+std::string ordinal_under_100(int n);
+
+std::string unit_cardinal(int n) {
+  static const char* const k[] = {"zero",    "one",     "two",       "three",    "four",
+                                  "five",    "six",     "seven",     "eight",    "nine",
+                                  "ten",     "eleven",  "twelve",    "thirteen", "fourteen",
+                                  "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"};
+  return k[n];
+}
+
+std::string unit_ordinal(int n) {
+  static const char* const k[] = {
+      "zeroth",     "first",     "second",      "third",      "fourth",
+      "fifth",      "sixth",     "seventh",     "eighth",     "ninth",
+      "tenth",      "eleventh",  "twelfth",     "thirteenth", "fourteenth",
+      "fifteenth",  "sixteenth", "seventeenth", "eighteenth", "nineteenth"};
+  return k[n];
+}
+
+std::string tens_cardinal(int n) {
+  static const char* const k[] = {"",       "",      "twenty",  "thirty", "forty",
+                                  "fifty",  "sixty", "seventy", "eighty", "ninety"};
+  return k[n];
+}
+
+std::string tens_ordinal(int n) {
+  static const char* const k[] = {"",          "",         "twentieth", "thirtieth", "fortieth",
+                                  "fiftieth",  "sixtieth", "seventieth", "eightieth", "ninetieth"};
+  return k[n];
+}
+
+std::string cardinal_under_100(int n) {
+  if (n < 20) return unit_cardinal(n);
+  std::string s = tens_cardinal(n / 10);
+  if (n % 10) {
+    s.push_back(' ');
+    s += unit_cardinal(n % 10);
+  }
+  return s;
+}
+
+std::string ordinal_under_100(int n) {
+  if (n < 20) return unit_ordinal(n);
+  if (n % 10 == 0) return tens_ordinal(n / 10);
+  return tens_cardinal(n / 10) + " " + unit_ordinal(n % 10);
+}
+
+std::string cardinal_under_1000(int n) {
+  if (n < 100) return cardinal_under_100(n);
+  std::string s = unit_cardinal(n / 100) + " hundred";
+  if (n % 100) {
+    s += " and ";
+    s += cardinal_under_100(n % 100);
+  }
+  return s;
+}
+
+std::string ordinal_words(int n) {
+  if (n < 0 || n > 99999) return {};
+  if (n < 100) return ordinal_under_100(n);
+  if (n < 1000) {
+    if (n % 100 == 0) return unit_cardinal(n / 100) + " hundredth";
+    return unit_cardinal(n / 100) + " hundred and " + ordinal_under_100(n % 100);
+  }
+  const int thousands = n / 1000;
+  const int rem = n % 1000;
+  std::string s = cardinal_under_1000(thousands) + " thousand";
+  if (rem == 0) {
+    s += "th";
+    return s;
+  }
+  s += " ";
+  if (rem < 100) s += "and ";
+  if (rem < 100) s += ordinal_under_100(rem);
+  else if (rem % 100 == 0) s += unit_cardinal(rem / 100) + " hundredth";
+  else s += unit_cardinal(rem / 100) + " hundred and " + ordinal_under_100(rem % 100);
+  return s;
+}
+
 void skip_space(std::string_view s, std::size_t& i) {
   while (i < s.size() && is_space(s[i])) ++i;
 }
@@ -326,9 +432,10 @@ std::string expand_math(std::string_view s) {
       continue;
     }
 
-    if (!out.empty() &&
-        ((is_digit(out.back()) && is_alpha(s[i])) ||
-         (is_alpha(out.back()) && is_digit(s[i])))) {
+    if (!out.empty() && is_digit(out.back()) && is_alpha(s[i]) &&
+        !ordinal_suffix_at(s, i)) {
+      out.push_back(' ');
+    } else if (!out.empty() && is_alpha(out.back()) && is_digit(s[i])) {
       out.push_back(' ');
     }
     out.push_back(s[i]);
@@ -536,6 +643,10 @@ std::string speak_symbols(std::string_view s) {
       emit_word("pi");
       continue;
     }
+    if (eat("...")) {
+      if (last_non_space() != ',' && last_non_space() != '.') push_raw(',');
+      continue;
+    }
     if (eat("√")) {
       emit_word("the square root of");
       continue;
@@ -598,30 +709,64 @@ std::string speak_symbols(std::string_view s) {
       continue;
     }
 
-    // Unary minus / binary minus next to a number or variable.
+    // Unicode minus should be spoken; em/en dashes are pauses, not "minus".
+    if (eat("\xE2\x88\x92")) {
+      emit_word("minus");
+      continue;
+    }
+    if (eat("\xE2\x80\x94") || eat("\xE2\x80\x93") || eat("---") || eat("--")) {
+      if (last_non_space() != ',' && last_non_space() != '.' && last_non_space() != '?' &&
+          last_non_space() != '!' && last_non_space() != ';' && last_non_space() != ':') {
+        push_raw(',');
+      }
+      continue;
+    }
+
+    // Hyphen: compounds and ranges stay natural; only spaced arithmetic is "minus".
     if (s[i] == '-') {
+      if (i + 1 < s.size() && s[i + 1] == '-') {
+        while (i < s.size() && s[i] == '-') ++i;
+        if (last_non_space() != ',' && last_non_space() != '.') push_raw(',');
+        continue;
+      }
       std::size_t k = i + 1;
       skip_space(s, k);
+      const bool spaced = k > i + 1;
       const bool next_num = k < s.size() && (is_digit(s[k]) || s[k] == '.');
       const bool next_alpha = k < s.size() && is_alpha(s[k]);
       const char prev = last_non_space();
       const bool prev_alnum = is_alnum(prev);
+      const bool prev_alpha = is_alpha(prev);
+      const bool prev_digit = is_digit(prev);
+      const bool tight_alpha = i + 1 < s.size() && is_alpha(s[i + 1]);
+      const bool tight_digit = i + 1 < s.size() && is_digit(s[i + 1]);
+
+      if (!spaced && prev_alpha && (tight_alpha || tight_digit)) {
+        push_raw(' ');
+        ++i;
+        continue;
+      }
+      if (!spaced && prev_digit && tight_digit) {
+        emit_word("to");
+        ++i;
+        continue;
+      }
       if (next_num && !prev_alnum) {
         emit_word("negative");
         i = k;
         continue;
       }
-      if ((next_num || next_alpha) && prev_alnum) {
+      if (spaced && (next_num || next_alpha) && prev_alnum) {
         emit_word("minus");
         ++i;
         continue;
       }
-      if (next_alpha && !prev_alnum) {
+      if (spaced && next_alpha && !prev_alnum) {
         emit_word("minus");
         i = k;
         continue;
       }
-      push_raw('-');
+      push_raw(' ');
       ++i;
       continue;
     }
@@ -647,6 +792,59 @@ std::string speak_symbols(std::string_view s) {
   return out;
 }
 
+std::string expand_ordinals(std::string_view s) {
+  std::string out;
+  out.reserve(s.size() + 16);
+  for (std::size_t i = 0; i < s.size();) {
+    if (is_digit(s[i]) && (i == 0 || !is_alnum(s[i - 1]))) {
+      std::size_t j = i;
+      while (j < s.size() && is_digit(s[j])) ++j;
+      if (j > i && j - i <= 5) {
+        int n = 0;
+        bool overflow = false;
+        for (std::size_t p = i; p < j; ++p) {
+          if (n > (99999 - (s[p] - '0')) / 10) {
+            overflow = true;
+            break;
+          }
+          n = n * 10 + (s[p] - '0');
+        }
+        std::size_t k = j;
+        skip_space(s, k);
+        if (!overflow && ordinal_suffix_at(s, k)) {
+          const char a =
+              static_cast<char>(std::tolower(static_cast<unsigned char>(s[k])));
+          const char b =
+              static_cast<char>(std::tolower(static_cast<unsigned char>(s[k + 1])));
+          const char* want = expected_ordinal_suffix(n);
+          if (a == want[0] && b == want[1]) {
+            const std::string words = ordinal_words(n);
+            if (!words.empty()) {
+              append_spaced(&out, words);
+              i = k + 2;
+              continue;
+            }
+          }
+        }
+      }
+    }
+    out.push_back(s[i]);
+    ++i;
+  }
+  return out;
+}
+
+std::string ensure_spoken_stop(std::string s) {
+  while (!s.empty() && is_space(s.back())) s.pop_back();
+  if (s.empty()) return s;
+  const char last = s.back();
+  if (last != '.' && last != '!' && last != '?' && last != ',' && last != ';' &&
+      last != ':') {
+    s.push_back('.');
+  }
+  return s;
+}
+
 }  // namespace
 
 std::string to_speakable(std::string_view text) {
@@ -657,7 +855,9 @@ std::string to_speakable(std::string_view text) {
   s = expand_math(s);
   s = strip_markdown(s);
   s = speak_symbols(s);
+  s = expand_ordinals(s);
   s = collapse_ws(s);
+  s = ensure_spoken_stop(std::move(s));
   return s;
 }
 

@@ -5,7 +5,7 @@
 	(uuid "c1d4a2b8-6e9f-4c3a-8d7b-1a2e3f4c5d60")
 	(paper "A4")
 	(title_block
-		(title "Intercom power")
+		(title "Intercom power (rev B)")
 		(comment 1 "TPS61088 1S LiPo to +5V")
 	)
 	(lib_symbols
@@ -1731,6 +1731,17 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "CELL+ = pack positive (charger target, before SW2)"
+		(exclude_from_sim no)
+		(at 76.2 71.12 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "db260f9f-ff23-4c58-9d0f-b80a4b84ad36")
+	)
 	(junction
 		(at 96.52 83.82)
 		(diameter 0)
@@ -2525,6 +2536,28 @@
 			)
 		)
 		(uuid "b9e1848d-ef4e-4217-9b5d-de2d2a2518da")
+	)
+	(global_label "CELL+"
+		(shape passive)
+		(at 78.74 86.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "43c87922-7c15-4ab1-a4b7-02b4f8afae84")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 78.74 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 	)
 	(symbol
 		(lib_id "Device:C")
@@ -3699,7 +3732,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(in_pos_files no)
-		(dnp yes)
+		(dnp no)
 		(uuid "79211c74-3188-4824-add3-317d121b5489")
 		(property "Reference" "SW2"
 			(at 87.63 79.502 0)
@@ -3721,7 +3754,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Button_Switch_THT:SW_Slide_SPDT_Straight_CK_OS102011MS2Q"
+		(property "Footprint" "Button_Switch_THT:SW_Slide_SPDT_Angled_CK_OS102011MA1Q"
 			(at 87.63 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -3732,7 +3765,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.ckswitches.com/media/1428/os.pdf"
 			(at 87.63 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -3743,7 +3776,7 @@
 				)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "C&K OS102011MA1Q right-angle SPDT slide (side-facing). Order OS102011MA1QN1."
 			(at 87.63 86.36 0)
 			(hide yes)
 			(show_name no)

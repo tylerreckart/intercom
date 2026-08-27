@@ -1,4 +1,5 @@
 #include "intercom/arbiter_client.hpp"
+#include "intercom/clock.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -138,6 +139,30 @@ void parse_sse_buffer(std::string& buf,
   }
 }
 
+nlohmann::json agent_def_with_clock(const std::string& agent_def_json) {
+  if (agent_def_json.empty()) return {};
+  nlohmann::json def;
+  try {
+    def = nlohmann::json::parse(agent_def_json);
+  } catch (...) {
+    return {};
+  }
+  if (!def.is_object()) return {};
+  nlohmann::json next = nlohmann::json::array();
+  next.push_back(local_clock_rule());
+  if (def.contains("rules") && def["rules"].is_array()) {
+    for (const auto& r : def["rules"]) {
+      if (r.is_string()) {
+        const std::string s = r.get<std::string>();
+        if (s.rfind("CURRENT LOCAL DATETIME:", 0) == 0) continue;
+      }
+      next.push_back(r);
+    }
+  }
+  def["rules"] = std::move(next);
+  return def;
+}
+
 }  // namespace
 
 ArbiterClient::ArbiterClient(std::string base_url, std::string token, std::string agent,
@@ -203,6 +228,9 @@ bool ArbiterClient::send_message(std::int64_t conversation_id,
       {"message", message},
       {"channel", "voice"},
   };
+  if (auto def = agent_def_with_clock(agent_def_json_); !def.empty()) {
+    body["agent_def"] = std::move(def);
+  }
 
   httplib::Request req;
   req.method = "POST";

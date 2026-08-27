@@ -38,6 +38,7 @@ add_executable(intercom
   src/filler_client.cpp
   src/session_store.cpp
   src/fast_path.cpp
+  src/clock.cpp
   src/turn_pipeline.cpp
   src/http_server.cpp
   src/util.cpp
@@ -87,6 +88,26 @@ target_include_directories(test_wav_util PRIVATE
 )
 add_test(NAME test_wav_util COMMAND test_wav_util)
 
+add_executable(test_speakable
+  tests/test_speakable.cpp
+  src/speakable.cpp
+)
+target_include_directories(test_speakable PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_test(NAME test_speakable COMMAND test_speakable)
+
+add_executable(test_fast_path
+  tests/test_fast_path.cpp
+  src/fast_path.cpp
+  src/clock.cpp
+  src/util.cpp
+)
+target_include_directories(test_fast_path PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_test(NAME test_fast_path COMMAND test_fast_path)
+
 add_executable(test_sentence_tts
   tests/test_sentence_tts.cpp
   src/turn_pipeline.cpp
@@ -94,6 +115,7 @@ add_executable(test_sentence_tts
   src/util.cpp
   src/session_store.cpp
   src/fast_path.cpp
+  src/clock.cpp
   src/arbiter_client.cpp
   src/filler_client.cpp
 )

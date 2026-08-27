@@ -778,13 +778,58 @@ static void writeAuthHeaders(WiFiClient &c) {
   c.printf("X-Device-Id: %s\r\n", gDeviceId.c_str());
 }
 
+static const char *wifiStatusName() {
+  switch (WiFi.status()) {
+    case WL_IDLE_STATUS: return "IDLE";
+    case WL_NO_SSID_AVAIL: return "NO_SSID";
+    case WL_SCAN_COMPLETED: return "SCAN_DONE";
+    case WL_CONNECTED: return "CONNECTED";
+    case WL_CONNECT_FAILED: return "AUTH_FAILED";
+    case WL_CONNECTION_LOST: return "LOST";
+    case WL_DISCONNECTED: return "DISC";
+    default: return "OTHER";
+  }
+}
+
+static void printWifi(const char *why) {
+  Serial.printf("%s wifi %s(%d) ip=%s gw=%s rssi=%d want=%s\n", why,
+                wifiStatusName(), WiFi.status(),
+                WiFi.localIP().toString().c_str(),
+                WiFi.gatewayIP().toString().c_str(), WiFi.RSSI(), WIFI_SSID);
+}
+
+static void scanWifi() {
+  Serial.println("scan: 2.4GHz only — wait");
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  const int n = WiFi.scanNetworks(/*async=*/false, /*hidden=*/true);
+  Serial.printf("scan: %d networks\n", n);
+  for (int i = 0; i < n; ++i) {
+    Serial.printf("  ch=%d rssi=%d %s\n", WiFi.channel(i), WiFi.RSSI(i),
+                  WiFi.SSID(i).c_str());
+  }
+  WiFi.scanDelete();
+}
+
 static bool connectIntercom(WiFiClient &c) {
-  c.setTimeout(HEADER_TIMEOUT_MS);
-  if (!c.connect(INTERCOM_HOST, INTERCOM_PORT, HTTP_TIMEOUT_MS)) {
-    Serial.printf("connect failed %s:%d\n", INTERCOM_HOST, INTERCOM_PORT);
+  if (WiFi.status() != WL_CONNECTED) {
+    printWifi("connect failed: not associated");
     return false;
   }
-  return true;
+  IPAddress ip;
+  if (!ip.fromString(INTERCOM_HOST)) {
+    Serial.printf("connect failed: bad INTERCOM_HOST %s\n", INTERCOM_HOST);
+    return false;
+  }
+  c.setTimeout(HEADER_TIMEOUT_MS);
+  for (int attempt = 1; attempt <= 3; ++attempt) {
+    if (c.connect(ip, INTERCOM_PORT, HTTP_TIMEOUT_MS)) return true;
+    Serial.printf("connect try %d failed %s:%d\n", attempt, INTERCOM_HOST,
+                  INTERCOM_PORT);
+    delay(250);
+  }
+  printWifi("connect failed");
+  return false;
 }
 
 static PlayResult playResponseBody(WiFiClient &c, const HttpHeaders &h) {
@@ -1110,6 +1155,12 @@ static void handleSerial() {
     Serial.printf("mic type=%s left_slot=%d sample_rate=%d\n", micTypeName(),
                   (int)MIC_LEFT_SLOT, SAMPLE_RATE);
     Serial.println("  debug: micwire | micbang | clkblink | mic");
+  } else if (cmd == "wifi") {
+    printWifi("wifi");
+    Serial.printf("  associated=%s dest=%s:%d\n", WiFi.SSID().c_str(),
+                  INTERCOM_HOST, INTERCOM_PORT);
+  } else if (cmd == "scan") {
+    scanWifi();
   } else if (cmd == "vol") {
     updateVolume();
     Serial.printf("vol adc=%d gain=%d (4095=full)\n", analogRead(PIN_VOLUME),
@@ -1139,12 +1190,19 @@ static void handleSerial() {
     Serial.println("ampoff: SD LOW");
   } else if (cmd.length()) {
     Serial.println(
-        "commands: say <text> | ping | health | tone | beep | vol");
+        "commands: say <text> | ping | health | wifi | scan | tone | beep | vol");
   }
 }
 
 static void connectWifi() {
+  if (!strcmp(WIFI_SSID, "YOUR_WIFI_SSID") || !WIFI_SSID[0]) {
+    Serial.println("WIFI_SSID unset — create secrets.h next to the sketch and reflash");
+    Serial.println("  #define WIFI_SSID \"your-2.4g-ssid\"");
+    Serial.println("  #define WIFI_PASSWORD \"...\"");
+    return;
+  }
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.printf("wifi %s", WIFI_SSID);
   uint32_t t0 = millis();
@@ -1159,7 +1217,8 @@ static void connectWifi() {
     }
   }
   digitalWrite(LED_BUILTIN, LOW);
-  Serial.printf("\nip %s\n", WiFi.localIP().toString().c_str());
+  Serial.printf("\nip %s gw %s rssi %d\n", WiFi.localIP().toString().c_str(),
+                WiFi.gatewayIP().toString().c_str(), WiFi.RSSI());
 }
 
 static const char *resetReasonStr() {
@@ -1224,7 +1283,7 @@ void setup() {
     Serial.println("volume at minimum — turn A0 pot CW for playback");
     Serial.println("(tone/beep ignore pot; use beep to test speaker)");
   }
-  Serial.println("serial: say <text> | ping | health | tone");
+  Serial.println("serial: say <text> | ping | health | wifi | scan | tone");
 }
 
 void loop() {

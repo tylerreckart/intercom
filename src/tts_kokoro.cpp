@@ -243,7 +243,12 @@ void KokoroTts::warmup() {
 bool KokoroTts::emit_pcm(const std::vector<std::uint8_t>& pcm,
                          PcmChunkFn on_chunk,
                          std::string* err) {
-  return emit_chunks(pcm, on_chunk, err);
+  // Soften clip edges and leave a breath so sentence stitches don't click or cut off.
+  std::vector<std::uint8_t> shaped = pcm;
+  fade_s16le_mono_edges(&shaped, target_sample_rate_, 18, 32);
+  const auto tail = silence_s16le_mono(target_sample_rate_, 220);
+  shaped.insert(shaped.end(), tail.begin(), tail.end());
+  return emit_chunks(shaped, on_chunk, err);
 }
 
 bool KokoroTts::synthesize(const std::string& text, PcmChunkFn on_chunk, std::string* err) {

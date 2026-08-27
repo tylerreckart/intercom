@@ -1,0 +1,17 @@
+(version 1)
+(rule "RV1_R4_courtyard"
+  (constraint courtyard_clearance (min -1mm))
+  (condition "(A.Reference == 'RV1' && B.Reference == 'R4') || (A.Reference == 'R4' && B.Reference == 'RV1')")
+)
+(rule "R2_U3_courtyard"
+  (constraint courtyard_clearance (min -1mm))
+  (condition "(A.Reference == 'R2' && B.Reference == 'U3') || (A.Reference == 'U3' && B.Reference == 'R2')")
+)
+(rule "U3_east_decap_courtyard"
+  (constraint courtyard_clearance (min -1mm))
+  (condition "A.Reference == 'U3' && (B.Reference == 'C40' || B.Reference == 'C41' || B.Reference == 'C42' || B.Reference == 'R43' || B.Reference == 'R1')")
+)
+(rule "U3_east_decap_courtyard_rev"
+  (constraint courtyard_clearance (min -1mm))
+  (condition "B.Reference == 'U3' && (A.Reference == 'C40' || A.Reference == 'C41' || A.Reference == 'C42' || A.Reference == 'R43' || A.Reference == 'R1')")
+)

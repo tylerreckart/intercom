@@ -1,5 +1,6 @@
 #include "intercom/util.hpp"
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -45,6 +46,20 @@ int main() {
     CHECK(bare->path.empty());
     CHECK(bare->port == 8092);
   }
+
+  std::vector<std::uint8_t> fade_pcm(8, 0);
+  auto* samples = reinterpret_cast<std::int16_t*>(fade_pcm.data());
+  samples[0] = 30000;
+  samples[1] = 30000;
+  samples[2] = 30000;
+  samples[3] = 30000;
+  intercom::fade_s16le_mono_edges(&fade_pcm, 1000, 2, 2);
+  CHECK(samples[0] > 0 && samples[0] < 30000);
+  CHECK(samples[3] > 0 && samples[3] < 30000);
+
+  const auto quiet = intercom::silence_s16le_mono(1000, 10);
+  CHECK(quiet.size() == 20);
+  CHECK(quiet[0] == 0);
 
   if (g_fails != 0) {
     std::cerr << g_fails << " failure(s)\n";

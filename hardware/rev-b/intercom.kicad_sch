@@ -3213,6 +3213,145 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "power:+3.3V"
+			(power global)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "+3.3V"
+				(at 0 3.556 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "global power"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "+3.3V_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "+3.3V_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "power:+5V"
 			(power global)
 			(pin_numbers
@@ -3674,20 +3813,12 @@
 		(uuid "fab50a7c-adbc-487a-8c69-76b4748d9f49")
 	)
 	(no_connect
-		(at 161.29 80.01)
-		(uuid "0230e8b2-06ce-452a-ab7c-e2c8bdf271b5")
-	)
-	(no_connect
 		(at 66.04 167.64)
 		(uuid "03a27dce-17da-47c2-8afb-d9e6e8e940f5")
 	)
 	(no_connect
 		(at 77.47 85.09)
 		(uuid "14109b95-1cbc-4648-a06d-8129156c4b22")
-	)
-	(no_connect
-		(at 125.73 80.01)
-		(uuid "17d572f8-42ae-4caf-9b6b-76b8ccaf122c")
 	)
 	(no_connect
 		(at 106.68 167.64)
@@ -3698,64 +3829,8 @@
 		(uuid "3492eea5-bf04-493a-a4e0-2a3e856cef3d")
 	)
 	(no_connect
-		(at 130.81 115.57)
-		(uuid "34c64ea9-be96-4c1f-89a1-924851dfec7d")
-	)
-	(no_connect
-		(at 148.59 80.01)
-		(uuid "3c0620ce-7ffa-4298-92ad-bb9e442b5f73")
-	)
-	(no_connect
-		(at 158.75 80.01)
-		(uuid "4d7841df-ee05-43f0-9683-6c838888a050")
-	)
-	(no_connect
-		(at 135.89 80.01)
-		(uuid "5c11f77b-944f-43f3-b3db-45c9d5c25d4c")
-	)
-	(no_connect
-		(at 146.05 80.01)
-		(uuid "73450c93-bca9-4023-a294-0110cce445f2")
-	)
-	(no_connect
-		(at 158.75 115.57)
-		(uuid "73f5058f-0953-4a1e-bd0c-2ed85665302d")
-	)
-	(no_connect
-		(at 138.43 80.01)
-		(uuid "815a937c-a023-4e41-9748-24ee5c689d7f")
-	)
-	(no_connect
-		(at 161.29 115.57)
-		(uuid "8c16c474-5781-4045-8ad8-2c246c4e9383")
-	)
-	(no_connect
-		(at 156.21 80.01)
-		(uuid "958c04fc-47e5-4702-9318-35eeb4c701b1")
-	)
-	(no_connect
-		(at 151.13 80.01)
-		(uuid "99c2b3b6-a179-4d92-b1c7-ec9971709453")
-	)
-	(no_connect
-		(at 130.81 80.01)
-		(uuid "9da4f2f0-6fd7-4e80-98df-0e3aae7191ec")
-	)
-	(no_connect
-		(at 153.67 80.01)
-		(uuid "a15853d1-21e3-49fa-bf2e-fb5dbeda0a66")
-	)
-	(no_connect
-		(at 128.27 115.57)
-		(uuid "b450fe0a-843a-4927-97fa-c3954bd9f96f")
-	)
-	(no_connect
 		(at 25.4 167.64)
 		(uuid "ca252b0c-42d4-4424-91ed-636c7861125e")
-	)
-	(no_connect
-		(at 156.21 115.57)
-		(uuid "ea16d8e1-aac7-4ba1-8b34-7892c4d10511")
 	)
 	(wire
 		(pts
@@ -4339,6 +4414,32 @@
 	)
 	(wire
 		(pts
+			(xy 156.21 143.51) (xy 161.29 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c4e8b1a0-2d7f-4a91-9c3e-5b6d8f0a1c24")
+	)
+	(wire
+		(pts
+			(xy 161.29 143.51) (xy 161.29 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d5f9c2b1-3e80-4b02-8d4f-6c7e9a1b2d35")
+	)
+	(junction
+		(at 161.29 146.05)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "e6a0d3c2-4f91-4c13-9e50-7d8f0b2c3e46")
+	)
+	(wire
+		(pts
 			(xy 133.35 115.57) (xy 133.35 133.35)
 		)
 		(stroke
@@ -4707,6 +4808,116 @@
 		)
 		(uuid "fe39ddee-bb75-4363-805e-bb8d586ff16c")
 	)
+	(global_label "MIC_WS"
+		(shape bidirectional)
+		(at 133.35 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "031e3acb-131e-431c-afdd-642f12f79773")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 133.35 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "VOLUME"
+		(shape bidirectional)
+		(at 143.51 80.01 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "035841f7-9227-45bc-9223-e7c238bdf2ec")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 143.51 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MIC_SD"
+		(shape bidirectional)
+		(at 138.43 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "046f0dd8-e6f2-48c6-8333-a09ea57429ff")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 138.43 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SPK_BCLK"
+		(shape bidirectional)
+		(at 143.51 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "06bfe654-12aa-4032-ba71-067144d7a743")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 143.51 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "THINK_LED"
+		(shape bidirectional)
+		(at 153.67 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "2fb2d29f-2b58-4b95-b733-53fdc8d0ee99")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 153.67 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
 	(global_label "Net-(J1-Pin_3)"
 		(shape passive)
 		(at 170.18 74.93 180)
@@ -4719,6 +4930,116 @@
 		(uuid "544129cf-efe7-482f-b6b2-ff64428accbf")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 170.18 76.7084 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MIC_BCLK"
+		(shape bidirectional)
+		(at 135.89 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "6b9db40f-d148-477f-9d38-52caf0c64f97")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 135.89 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SPK_DIN"
+		(shape bidirectional)
+		(at 146.05 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "70a95205-ba28-478a-948d-922caeb83709")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 146.05 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SPK_WS"
+		(shape bidirectional)
+		(at 140.97 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "7a3b5917-a907-4018-a0ee-6518a270dab6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 140.97 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AMP_SD"
+		(shape bidirectional)
+		(at 151.13 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "b3f96769-3d9e-4b96-ac77-6ff543debf51")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 151.13 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "PTT"
+		(shape bidirectional)
+		(at 148.59 115.57 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "e1d80836-d5c5-4083-ab99-bd9754d985e1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 148.59 115.57 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5386,52 +5707,38 @@
 		)
 	)
 	(symbol
-		(lib_id "MCU_Module:Arduino_Nano_ESP32")
-		(at 143.51 97.79 90)
+		(lib_id "power:+3.3V")
+		(at 123.19 80.01 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(in_pos_files no)
-		(dnp yes)
-		(uuid "29c6b3ea-14c3-4c78-ae67-6023764f1016")
-		(property "Reference" "A1"
-			(at 142.494 96.266 90)
+		(dnp no)
+		(uuid "33624e46-050b-4890-8710-1f41a39aa11f")
+		(property "Reference" "#PWRB99"
+			(at 123.19 74.93 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
 			)
 		)
-		(property "Value" "Arduino_Nano_ESP32"
-			(at 142.494 98.806 90)
+		(property "Value" "+3.3V"
+			(at 123.19 77.47 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
 			)
 		)
-		(property "Footprint" "Module:Arduino_Nano"
-			(at 177.546 84.074 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-			)
-		)
-		(property "Datasheet" "https://docs.arduino.cc/resources/datasheets/ABX00083-datasheet.pdf"
-			(at 175.006 58.674 0)
+		(property "Footprint" ""
+			(at 123.19 80.01 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5441,8 +5748,8 @@
 				)
 			)
 		)
-		(property "Description" "Arduino Nano board based on the ESP32-S3 with a dual-core 240 MHz processor, 384 kB ROM, 512 kB SRAM. Operates at 3.3V, with 5V USB-C® input and 6-21V VIN. Features Wi-Fi®, Bluetooth® LE, digital and analog pins, and supports SPI, I2C, UART, I2S, and CAN."
-			(at 172.466 -40.64 0)
+		(property "Datasheet" ""
+			(at 123.19 80.01 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5452,100 +5759,24 @@
 				)
 			)
 		)
-		(pin "23"
-			(uuid "2a054ca2-b9df-423b-a69d-15c02e82832c")
-		)
-		(pin "25"
-			(uuid "067f9444-069b-4971-b010-304dffa7a14d")
-		)
-		(pin "24"
-			(uuid "604d76f8-3c5c-4187-9fe9-bd59ca9dd674")
-		)
-		(pin "14"
-			(uuid "95ae3230-c904-4b79-be49-972c9eb9d42d")
-		)
-		(pin "13"
-			(uuid "e1b83cdd-5281-4789-a602-417ff89e3178")
-		)
-		(pin "12"
-			(uuid "3897f588-19a5-4e0d-8de2-3c2e03faf313")
-		)
-		(pin "11"
-			(uuid "0472e3ce-53c4-4ef0-a85b-5f5ba97ee732")
+		(property "Description" ""
+			(at 123.19 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
 		)
 		(pin "1"
-			(uuid "4f78f36d-ed8a-4de5-aaf4-358f16e2e046")
-		)
-		(pin "2"
-			(uuid "11dd3994-17c8-4fc9-bf41-579d2cf2c879")
-		)
-		(pin "3"
-			(uuid "5a860a2f-11d5-41a2-bfb9-205edf0065c2")
-		)
-		(pin "4"
-			(uuid "ebf9dea9-4b1e-4923-9afb-701d3a74ebc4")
-		)
-		(pin "5"
-			(uuid "3cff3ce1-ce76-4256-b032-8d3317a49062")
-		)
-		(pin "6"
-			(uuid "fda3e0cb-1e29-44e6-ad4e-6914d3335f94")
-		)
-		(pin "7"
-			(uuid "c117a99f-47c4-440b-881c-ee8a81e627e6")
-		)
-		(pin "8"
-			(uuid "f75691ee-05a5-4ece-aea5-2e4e489dace4")
-		)
-		(pin "9"
-			(uuid "e0b2282a-5061-4bbe-8752-7625ff7e206c")
-		)
-		(pin "10"
-			(uuid "5512d081-1fd2-457a-9d97-92a27835e2cb")
-		)
-		(pin "15"
-			(uuid "f037651e-1fbe-4c86-bf65-8f34508bed39")
-		)
-		(pin "16"
-			(uuid "179a4c72-3e96-434a-aea1-052c0646ea70")
-		)
-		(pin "17"
-			(uuid "2b4516d4-97ba-456f-b2a8-5fa11dc046cd")
-		)
-		(pin "18"
-			(uuid "dd57271e-3b5a-4d95-a929-802a50b3c669")
-		)
-		(pin "19"
-			(uuid "6612313a-d04d-4ec4-80f0-08146c880360")
-		)
-		(pin "20"
-			(uuid "465835f8-e6ac-4b23-9d34-9e7b225e425d")
-		)
-		(pin "21"
-			(uuid "283c3537-14c2-4d09-b9f5-5d5ffd1c85f9")
-		)
-		(pin "22"
-			(uuid "f21fb558-0728-462f-a494-c587a98bdae4")
-		)
-		(pin "26"
-			(uuid "52525a64-279e-42a7-b160-c90f302c411e")
-		)
-		(pin "27"
-			(uuid "bcccea93-598b-497b-9ea0-0bd8111e3744")
-		)
-		(pin "28"
-			(uuid "2ebbae37-8328-4c3f-8264-424679ca376c")
-		)
-		(pin "29"
-			(uuid "279e38cb-dc9b-4716-8cbe-b8bdf17d1f23")
-		)
-		(pin "30"
-			(uuid "48ff7a0e-e053-4152-be82-4792a175d895")
+			(uuid "0792664c-7357-48cf-b165-3f993fadff07")
 		)
 		(instances
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
-					(reference "A1")
+					(reference "#PWRB99")
 					(unit 1)
 				)
 			)
@@ -6170,8 +6401,8 @@
 		)
 	)
 	(symbol
-		(lib_id "power:+5V")
-		(at 123.19 115.57 0)
+		(lib_id "Connector_Generic:Conn_01x02")
+		(at 161.29 140.97 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -6180,9 +6411,29 @@
 		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
-		(uuid "7b30c3fe-164e-4ee7-a9bd-f9ffe4d0bdf1")
-		(property "Reference" "#PWR04"
-			(at 123.19 111.76 0)
+		(uuid "a8c1d4e5-6f70-4b12-9c34-8d9e0f1a2b3c")
+		(property "Reference" "J4"
+			(at 166.37 135.89 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "PTT"
+			(at 166.37 138.43 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal"
+			(at 161.29 140.97 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6192,18 +6443,8 @@
 				)
 			)
 		)
-		(property "Value" "+5V"
-			(at 123.19 111.76 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 123.19 115.57 0)
+		(property "Datasheet" "https://www.jst-mfg.com/product/pdf/eng/eSH.pdf"
+			(at 161.29 140.97 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6213,96 +6454,8 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
-			(at 123.19 115.57 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"+5V\""
-			(at 123.19 115.57 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "c224825d-d380-4fb2-82b8-b6ba46b92118")
-		)
-		(instances
-			(project "intercom"
-				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
-					(reference "#PWR04")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Switch:SW_Push_45deg")
-		(at 158.75 143.51 180)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files no)
-		(dnp yes)
-		(fields_autoplaced yes)
-		(uuid "7d390b16-692a-4cc5-9994-387baf3f068f")
-		(property "Reference" "SW1"
-			(at 158.75 135.89 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "SW_Push_45deg"
-			(at 158.75 138.43 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Button_Switch_THT:SW_PUSH_6mm"
-			(at 158.75 143.51 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 158.75 143.51 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Push button switch, normally open, two pins, 45° tilted"
-			(at 158.75 143.51 0)
+		(property "Description" "PTT panel cable, JST SH 1.00 mm 2-pin SMT (SM02B-SRSS-TB)"
+			(at 161.29 140.97 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6313,15 +6466,15 @@
 			)
 		)
 		(pin "1"
-			(uuid "b95c94c4-5215-4c67-a3e6-3bb3bf018561")
+			(uuid "b0c2d4e6-7a81-4c23-8d45-9e0f1a2b3c4d")
 		)
 		(pin "2"
-			(uuid "147de6cc-3793-4fe4-9da2-4e98eccd6dda")
+			(uuid "c1d3e5f7-8b92-4d34-9e56-0f1a2b3c4d5e")
 		)
 		(instances
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
-					(reference "SW1")
+					(reference "J4")
 					(unit 1)
 				)
 			)
@@ -7017,8 +7170,8 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(in_pos_files no)
-		(dnp yes)
+		(in_pos_files yes)
+		(dnp no)
 		(uuid "b4904a83-b844-4d94-b8e1-3ff523e68725")
 		(property "Reference" "RV1"
 			(at 143.002 58.42 0)
@@ -7040,7 +7193,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Potentiometer_THT:Potentiometer_Bourns_PTV09A-1_Single_Vertical"
+		(property "Footprint" "Potentiometer_THT:Potentiometer_Piher_PT-10-H01_Horizontal"
 			(at 138.43 59.69 0)
 			(hide yes)
 			(show_name no)
@@ -7051,7 +7204,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://www.piher.net/products/contacting-position-sensors/trimmers-and-control-potentiometers/through-hole/pt-10/"
 			(at 138.43 59.69 0)
 			(hide yes)
 			(show_name no)
@@ -7482,6 +7635,82 @@
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
 					(reference "#PWR012")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 168.91 97.79 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "daeec08b-3136-40de-aa11-a34af17b9f0b")
+		(property "Reference" "#PWRB98"
+			(at 168.91 92.71 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 168.91 95.25 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 168.91 97.79 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 168.91 97.79 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 168.91 97.79 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "810da595-8d7c-4217-a2ed-f28e58d54c04")
+		)
+		(instances
+			(project "intercom"
+				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
+					(reference "#PWRB98")
 					(unit 1)
 				)
 			)
@@ -8112,6 +8341,96 @@
 			(project "intercom"
 				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
 					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 215.9 86.36)
+		(size 45.72 25.4)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "c3e8a1b0-7d24-4f91-9c5e-2a6b8d4e1f70")
+		(property "Sheetname" "MCU"
+			(at 215.9 85.59 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "mcu.kicad_sch"
+			(at 215.9 112.52 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "intercom"
+				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 215.9 119.38)
+		(size 45.72 25.4)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "e9f2c4d1-8a35-4b06-b7c8-3d4e5f6a7b81")
+		(property "Sheetname" "USB power"
+			(at 215.9 118.61 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "usb_power.kicad_sch"
+			(at 215.9 145.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "intercom"
+				(path "/af1598c9-1c4f-48df-8fc6-849725ed1294"
+					(page "4")
 				)
 			)
 		)

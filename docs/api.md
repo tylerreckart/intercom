@@ -70,7 +70,7 @@ Same as utterance but skips STT — for bring-your-own transcript / bridge tests
 { "text": "what time is it" }
 ```
 
-Fast-path phrases (`ping`, `status`, `what time…`, `echo …`) never call Arbiter.
+Fast-path phrases (`hello` / `good morning` and other greetings, `status`, `what time…`, `echo …`) never call Arbiter. Social turns greet back and invite a follow-up.
 
 ## `POST /v1/turns/:turn_id/cancel`
 
@@ -89,7 +89,7 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 | First utterance per device | `POST /v1/conversations` (`agent_id` + `agent_def` from config) |
 | Each turn | `POST /v1/conversations/:id/messages` + SSE |
 | `message` | STT transcript only (no voice-intercom suffix) |
-| body | `{ "message", "channel": "voice" }` |
+| body | `{ "message", "channel": "voice", "agent_def" }` — `agent_def` includes a fresh local date/time rule each turn |
 | Arthur | `mode: "spoken"`, `intent.mode: "off"` |
 | Cancel | `POST /v1/requests/:id/cancel` |
 | Idempotency-Key | Intercom `turn_id` |
