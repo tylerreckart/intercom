@@ -5156,7 +5156,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17513"
+		(property "LCSC" "C270365"
 			(at 179.07 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -5167,7 +5167,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F1001T5E"
+		(property "MPN" "0201WMF1001TEE"
 			(at 179.07 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -5423,6 +5423,39 @@
 				)
 			)
 		)
+		(property "Manufacturer" "TDK InvenSense"
+			(at 139.7 129.54 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "ICS-43434"
+			(at 139.7 129.54 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C5656610"
+			(at 139.7 129.54 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "165aa0b8-94cc-42ce-9f9f-110c45dd9b7c")
 		)
@@ -5514,7 +5547,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C107145"
+		(property "LCSC" "C3887425"
 			(at 139.7 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5525,7 +5558,7 @@
 				)
 			)
 		)
-		(property "MPN" "CC0805KRX7R9BB221"
+		(property "MPN" "CL03B221KA3NNNC"
 			(at 139.7 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5536,7 +5569,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YAGEO"
+		(property "Manufacturer" "Samsung"
 			(at 139.7 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5626,7 +5659,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C28323"
+		(property "LCSC" "C29266"
 			(at 132.08 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5637,7 +5670,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL21B105KBFNNNE"
+		(property "MPN" "CL05A105KO5NNNC"
 			(at 132.08 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5648,7 +5681,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 132.08 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -5738,7 +5771,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C107145"
+		(property "LCSC" "C3887425"
 			(at 92.71 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -5749,7 +5782,7 @@
 				)
 			)
 		)
-		(property "MPN" "CC0805KRX7R9BB221"
+		(property "MPN" "CL03B221KA3NNNC"
 			(at 92.71 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -5760,7 +5793,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YAGEO"
+		(property "Manufacturer" "Samsung"
 			(at 92.71 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -5851,7 +5884,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17802"
+		(property "LCSC" "C473537"
 			(at 143.51 106.68 0)
 			(hide yes)
 			(show_name no)
@@ -5862,7 +5895,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F680JT5E"
+		(property "MPN" "0201WMF680JTEE"
 			(at 143.51 106.68 0)
 			(hide yes)
 			(show_name no)
@@ -6117,7 +6150,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C107145"
+		(property "LCSC" "C3887425"
 			(at 100.33 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -6128,7 +6161,7 @@
 				)
 			)
 		)
-		(property "MPN" "CC0805KRX7R9BB221"
+		(property "MPN" "CL03B221KA3NNNC"
 			(at 100.33 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -6139,7 +6172,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YAGEO"
+		(property "Manufacturer" "Samsung"
 			(at 100.33 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -6229,7 +6262,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C15850"
+		(property "LCSC" "C92487"
 			(at 55.88 74.93 0)
 			(hide yes)
 			(show_name no)
@@ -6240,7 +6273,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL21A106KAYNNNE"
+		(property "MPN" "CL10A106MO8NQNC"
 			(at 55.88 74.93 0)
 			(hide yes)
 			(show_name no)
@@ -6251,7 +6284,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 55.88 74.93 0)
 			(hide yes)
 			(show_name no)
@@ -6530,6 +6563,39 @@
 				)
 			)
 		)
+		(property "Manufacturer" "JST"
+			(at 101.6 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "S2B-PH-SM4-TB(LF)(SN)"
+			(at 101.6 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C295747"
+			(at 101.6 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "b0c2d4e6-7a81-4c23-8d45-9e0f1a2b3c4d")
 		)
@@ -6599,6 +6665,39 @@
 			)
 		)
 		(property "Description" "Volume potentiometer breakout, JST PH 2.00 mm 3-pin SMD side-entry"
+			(at 160.02 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "JST"
+			(at 160.02 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "S3B-PH-SM4-TB"
+			(at 160.02 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C20089272"
 			(at 160.02 64.77 0)
 			(hide yes)
 			(show_name no)
@@ -6802,6 +6901,39 @@
 				)
 			)
 		)
+		(property "Manufacturer" "JST"
+			(at 105.41 87.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "S2B-PH-SM4-TB(LF)(SN)"
+			(at 105.41 87.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C295747"
+			(at 105.41 87.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "8040ced1-96f6-4c9c-b671-b93be518f19d")
 		)
@@ -6874,6 +7006,39 @@
 		)
 		(property "Description" "Mono DAC with amplifier, I2S, PCM, TDM, 32-bit, 96khz, 3.2W, TQFP-16"
 			(at 52.07 95.25 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Analog Devices"
+			(at 50.8 97.79 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "MAX98357AETE+T"
+			(at 50.8 97.79 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C910544"
+			(at 50.8 97.79 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7239,6 +7404,39 @@
 				)
 			)
 		)
+		(property "Manufacturer" "Hongzhi Forest"
+			(at 189.23 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "HS-0402-UR"
+			(at 189.23 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C1322304"
+			(at 189.23 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(property "Sim.Pins" "1=K 2=A"
 			(at 189.23 86.36 0)
 			(hide yes)
@@ -7332,7 +7530,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17414"
+		(property "LCSC" "C473048"
 			(at 120.65 128.27 0)
 			(hide yes)
 			(show_name no)
@@ -7343,7 +7541,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F1002T5E"
+		(property "MPN" "0201WMF1002TEE"
 			(at 120.65 128.27 0)
 			(hide yes)
 			(show_name no)
@@ -7556,7 +7754,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C49678"
+		(property "LCSC" "C307382"
 			(at 55.88 62.23 0)
 			(hide yes)
 			(show_name no)
@@ -7567,7 +7765,7 @@
 				)
 			)
 		)
-		(property "MPN" "CC0805KRX7R9BB104"
+		(property "MPN" "CL03A104KP3NN5C"
 			(at 55.88 62.23 0)
 			(hide yes)
 			(show_name no)
@@ -7578,7 +7776,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YAGEO"
+		(property "Manufacturer" "Samsung"
 			(at 55.88 62.23 0)
 			(hide yes)
 			(show_name no)

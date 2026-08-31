@@ -2623,7 +2623,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C49678"
+		(property "LCSC" "C307382"
 			(at 133.35 106.68 0)
 			(hide yes)
 			(show_name no)
@@ -2634,7 +2634,7 @@
 				)
 			)
 		)
-		(property "MPN" "CC0805KRX7R9BB104"
+		(property "MPN" "CL03A104KP3NN5C"
 			(at 133.35 106.68 0)
 			(hide yes)
 			(show_name no)
@@ -2645,7 +2645,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YAGEO"
+		(property "Manufacturer" "Samsung"
 			(at 133.35 106.68 0)
 			(hide yes)
 			(show_name no)
@@ -2735,7 +2735,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C14857"
+		(property "LCSC" "C62546"
 			(at 175.26 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -2746,7 +2746,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL21C470JBANNNC"
+		(property "MPN" "0201CG470J500NT"
 			(at 175.26 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -2757,7 +2757,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Fenghua"
 			(at 175.26 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -3003,7 +3003,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C12891"
+		(property "LCSC" "C45783"
 			(at 208.28 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -3014,7 +3014,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL31A226KAHNNNE"
+		(property "MPN" "CL21A226MAQNNNE"
 			(at 208.28 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -3025,7 +3025,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 208.28 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -3105,6 +3105,39 @@
 			)
 		)
 		(property "Description" ""
+			(at 154.94 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Texas Instruments"
+			(at 154.94 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "TPS61088RHLR"
+			(at 154.94 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C87357"
 			(at 154.94 91.44 0)
 			(hide yes)
 			(show_name no)
@@ -3329,7 +3362,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C15850"
+		(property "LCSC" "C92487"
 			(at 101.6 99.06 0)
 			(hide yes)
 			(show_name no)
@@ -3340,7 +3373,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL21A106KAYNNNE"
+		(property "MPN" "CL10A106MO8NQNC"
 			(at 101.6 99.06 0)
 			(hide yes)
 			(show_name no)
@@ -3351,7 +3384,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 101.6 99.06 0)
 			(hide yes)
 			(show_name no)
@@ -3519,7 +3552,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C53134"
+		(property "LCSC" "C880416"
 			(at 200.66 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -3530,7 +3563,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL21B473KBCNNNC"
+		(property "MPN" "0201X473K100NT"
 			(at 200.66 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -3541,7 +3574,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Fenghua"
 			(at 200.66 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -3765,7 +3798,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.ckswitches.com/media/1428/os.pdf"
+		(property "Datasheet" "https://www.ckswitches.com/media/1423/js.pdf"
 			(at 87.63 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -3776,7 +3809,40 @@
 				)
 			)
 		)
-		(property "Description" "C&K OS102011MA1Q right-angle SPDT slide (side-facing). Order OS102011MA1QN1."
+		(property "Description" "C&K JS102011SAQN SMT right-angle SPDT slide. LCSC C221660."
+			(at 87.63 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "C&K"
+			(at 87.63 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "JS102011SAQN"
+			(at 87.63 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C221660"
 			(at 87.63 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -3866,7 +3932,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1744"
+		(property "LCSC" "C285054"
 			(at 196.85 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -3877,7 +3943,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805B472K500NT"
+		(property "MPN" "0201B472K100NT"
 			(at 196.85 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -3888,7 +3954,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "FH"
+		(property "Manufacturer" "Fenghua"
 			(at 196.85 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -3978,7 +4044,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17414"
+		(property "LCSC" "C473048"
 			(at 182.88 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -3989,7 +4055,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F1002T5E"
+		(property "MPN" "0201WMF1002TEE"
 			(at 182.88 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4090,7 +4156,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17501"
+		(property "LCSC" "C473559"
 			(at 214.63 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -4101,7 +4167,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F1803T5E"
+		(property "MPN" "0201WMF1803TEE"
 			(at 214.63 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -4202,7 +4268,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C49678"
+		(property "LCSC" "C307382"
 			(at 111.76 99.06 0)
 			(hide yes)
 			(show_name no)
@@ -4213,7 +4279,7 @@
 				)
 			)
 		)
-		(property "MPN" "CC0805KRX7R9BB104"
+		(property "MPN" "CL03A104KP3NN5C"
 			(at 111.76 99.06 0)
 			(hide yes)
 			(show_name no)
@@ -4224,7 +4290,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YAGEO"
+		(property "Manufacturer" "Samsung"
 			(at 111.76 99.06 0)
 			(hide yes)
 			(show_name no)
@@ -4470,7 +4536,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C12891"
+		(property "LCSC" "C45783"
 			(at 187.96 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -4481,7 +4547,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL31A226KAHNNNE"
+		(property "MPN" "CL21A226MAQNNNE"
 			(at 187.96 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -4492,7 +4558,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 187.96 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -4738,7 +4804,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17539"
+		(property "LCSC" "C62188"
 			(at 133.35 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -4749,7 +4815,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F2003T5E"
+		(property "MPN" "0201WMF2003TCE"
 			(at 133.35 96.52 0)
 			(hide yes)
 			(show_name no)
@@ -5162,7 +5228,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17756"
+		(property "LCSC" "C473524"
 			(at 214.63 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -5173,7 +5239,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F5602T5E"
+		(property "MPN" "0201WMF5602TEE"
 			(at 214.63 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -5264,6 +5330,39 @@
 			)
 		)
 		(property "Description" ""
+			(at 73.66 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "JST"
+			(at 73.66 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "S2B-PH-SM4-TB(LF)(SN)"
+			(at 73.66 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C295747"
 			(at 73.66 86.36 0)
 			(hide yes)
 			(show_name no)
@@ -5509,7 +5608,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C28323"
+		(property "LCSC" "C29266"
 			(at 179.07 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -5520,7 +5619,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL21B105KBFNNNE"
+		(property "MPN" "CL05A105KO5NNNC"
 			(at 179.07 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -5531,7 +5630,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 179.07 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -5699,6 +5798,39 @@
 				)
 			)
 		)
+		(property "Manufacturer" "Coilcraft"
+			(at 124.46 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "XAL5030-122MEC"
+			(at 124.46 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C7471471"
+			(at 124.46 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "b0bfd1b5-dfb1-47e4-9b15-20bebc1982fd")
 		)
@@ -5778,7 +5910,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C12891"
+		(property "LCSC" "C45783"
 			(at 204.47 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -5789,7 +5921,7 @@
 				)
 			)
 		)
-		(property "MPN" "CL31A226KAHNNNE"
+		(property "MPN" "CL21A226MAQNNNE"
 			(at 204.47 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -5800,7 +5932,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Samsung Electro-Mechanics"
+		(property "Manufacturer" "Samsung"
 			(at 204.47 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -5890,7 +6022,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C17539"
+		(property "LCSC" "C62188"
 			(at 233.68 91.44 0)
 			(hide yes)
 			(show_name no)
@@ -5901,7 +6033,7 @@
 				)
 			)
 		)
-		(property "MPN" "0805W8F2003T5E"
+		(property "MPN" "0201WMF2003TCE"
 			(at 233.68 91.44 0)
 			(hide yes)
 			(show_name no)
