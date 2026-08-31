@@ -4139,7 +4139,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
+		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
 			(at 38.1 63.5 0)
 			(hide yes)
 			(show_name no)
@@ -4218,7 +4218,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 121.92 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -5029,7 +5029,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+		(property "Footprint" "Resistor_SMD:R_0201_0603Metric"
 			(at 53.34 137.16 0)
 			(hide yes)
 			(show_name no)
@@ -5174,7 +5174,7 @@
 				)
 			)
 		)
-		(property "Value" "EN"
+		(property "Value" "KMR231GLFS"
 			(at 111.76 152.4 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5253,7 +5253,7 @@
 				)
 			)
 		)
-		(property "Value" "ESP32-S3-WROOM-1"
+		(property "Value" "ESP32-S3-WROOM-1-N8R8"
 			(at 160.02 96.52 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5763,7 +5763,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 27.94 63.5 0)
 			(hide yes)
 			(show_name no)
@@ -5842,7 +5842,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+		(property "Footprint" "Resistor_SMD:R_0201_0603Metric"
 			(at 111.76 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -6610,7 +6610,7 @@
 				)
 			)
 		)
-		(property "Value" "BOOT"
+		(property "Value" "KMR231GLFS"
 			(at 137.16 152.4 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6689,7 +6689,7 @@
 				)
 			)
 		)
-		(property "Value" "UART"
+		(property "Value" "UART TEST PADS"
 			(at 210.82 152.4 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6699,7 +6699,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+		(property "Footprint" "Intercom:UART_TestPads_3Pin"
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -6721,7 +6721,7 @@
 				)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "Three solder-mask-open pads for occasional UART probing"
 			(at 210.82 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -6857,7 +6857,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+		(property "Footprint" "Resistor_SMD:R_0201_0603Metric"
 			(at 40.64 137.16 0)
 			(hide yes)
 			(show_name no)
@@ -6936,7 +6936,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 175.26 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -7015,7 +7015,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
+		(property "Footprint" "Capacitor_SMD:C_0201_0603Metric"
 			(at 185.42 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -7246,7 +7246,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+		(property "Footprint" "Resistor_SMD:R_0201_0603Metric"
 			(at 137.16 129.54 0)
 			(hide yes)
 			(show_name no)

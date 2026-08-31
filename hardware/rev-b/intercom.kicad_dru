@@ -1,17 +1,15 @@
 (version 1)
-(rule "RV1_R4_courtyard"
-  (constraint courtyard_clearance (min -1mm))
-  (condition "(A.Reference == 'RV1' && B.Reference == 'R4') || (A.Reference == 'R4' && B.Reference == 'RV1')")
+(rule "0201 assembly clearance"
+  (constraint clearance (min 0.15mm))
+  (condition "A.memberOfFootprint('Resistor_SMD:R_0201_0603Metric') || B.memberOfFootprint('Resistor_SMD:R_0201_0603Metric') || A.memberOfFootprint('Capacitor_SMD:C_0201_0603Metric') || B.memberOfFootprint('Capacitor_SMD:C_0201_0603Metric')")
 )
-(rule "R2_U3_courtyard"
-  (constraint courtyard_clearance (min -1mm))
-  (condition "(A.Reference == 'R2' && B.Reference == 'U3') || (A.Reference == 'U3' && B.Reference == 'R2')")
+
+(rule "USB-C fine-pitch breakout width"
+  (constraint track_width (min 0.15mm))
+  (condition "A.NetName == 'USB_DN' || A.NetName == 'USB_DP'")
 )
-(rule "U3_east_decap_courtyard"
-  (constraint courtyard_clearance (min -1mm))
-  (condition "A.Reference == 'U3' && (B.Reference == 'C40' || B.Reference == 'C41' || B.Reference == 'C42' || B.Reference == 'R43' || B.Reference == 'R1')")
-)
-(rule "U3_east_decap_courtyard_rev"
-  (constraint courtyard_clearance (min -1mm))
-  (condition "B.Reference == 'U3' && (A.Reference == 'C40' || A.Reference == 'C41' || A.Reference == 'C42' || A.Reference == 'R43' || A.Reference == 'R1')")
+
+(rule "USB-C fine-pitch breakout clearance"
+  (constraint clearance (min 0.14mm))
+  (condition "(A.NetName == 'USB_DN' && B.NetName == 'CC1') || (A.NetName == 'CC1' && B.NetName == 'USB_DN')")
 )

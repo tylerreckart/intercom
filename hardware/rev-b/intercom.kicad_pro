@@ -39,9 +39,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.8,
-          "height": 1.27,
-          "width": 1.27
+          "drill": 0.0,
+          "height": 1.5,
+          "width": 1.5
         },
         "silk_line_width": 0.1,
         "silk_text_italic": false,
@@ -152,7 +152,7 @@
         "min_silk_clearance": 0.0,
         "min_text_height": 0.8,
         "min_text_thickness": 0.08,
-        "min_through_hole_diameter": 0.2,
+        "min_through_hole_diameter": 0.3,
         "min_track_width": 0.2,
         "min_via_annular_width": 0.1,
         "min_via_diameter": 0.5,
@@ -526,7 +526,7 @@
       "netlist": "",
       "plot": "",
       "specctra_dsn": "",
-      "step": "intercom.step",
+      "step": "",
       "vrml": ""
     },
     "page_layout_descr_file": ""
@@ -611,42 +611,12 @@
           "label": "Datasheet",
           "name": "Datasheet",
           "show": true
-        },
-        {
-          "group_by": false,
-          "label": "Sim.Type",
-          "name": "Sim.Type",
-          "show": false
-        },
-        {
-          "group_by": false,
-          "label": "Description",
-          "name": "Description",
-          "show": false
-        },
-        {
-          "group_by": false,
-          "label": "Sim.Pins",
-          "name": "Sim.Pins",
-          "show": false
-        },
-        {
-          "group_by": false,
-          "label": "#",
-          "name": "${ITEM_NUMBER}",
-          "show": false
-        },
-        {
-          "group_by": false,
-          "label": "Sim.Device",
-          "name": "Sim.Device",
-          "show": false
         }
       ],
       "filter_string": "",
       "group_symbols": true,
       "include_excluded_from_bom": true,
-      "name": "",
+      "name": "Default Editing",
       "sort_asc": true,
       "sort_field": "Reference"
     },
@@ -687,17 +657,17 @@
     "top_level_sheets": [
       {
         "filename": "intercom.kicad_sch",
-        "name": "Root",
+        "name": "intercom",
         "uuid": "af1598c9-1c4f-48df-8fc6-849725ed1294"
       }
     ],
-    "used_designators": "#FLGGND1,BT1,R1-4,#PWR1-13,#PWR415-416,D1,A1,SW1,C1-8,C32,FB1-2,U1,MK1,#FLGVBAT1,J1,S1,#FLG5V1,RV1",
+    "used_designators": "",
     "variants": []
   },
   "sheets": [
     [
       "af1598c9-1c4f-48df-8fc6-849725ed1294",
-      "Root"
+      "intercom"
     ],
     [
       "b7c2e91a-4f3d-4a8e-9c1b-2e5d8a7f6b40",

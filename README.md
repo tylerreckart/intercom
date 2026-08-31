@@ -1,8 +1,9 @@
 # Intercom
 
-![PCB render](.github/pcb_render.jpg)
+A custom, local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Kokoro** TTS, and Arbiter stays text + SSE in the middle.
 
-Local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Kokoro** TTS, and Arbiter stays text + SSE in the middle.
+![PCB Board Front](.github/board_front.jpg)
+![PCB Board Rear](.github/board_rear.jpg)
 
 ```
 ESP32  --HTTP PTT PCM-->  Intercom  --text/SSE-->  arbiter --api
@@ -55,22 +56,6 @@ curl -N -H "Authorization: Bearer dev-device-secret-change-me" \
 Play: `ffplay -f s16le -ar 16000 -ac 1 reply.pcm`
 
 PCM utterance: see [docs/api.md](docs/api.md) and [docs/device.md](docs/device.md).
-
-## Voice audition
-
-Generate a blind comparison of the four British male Kokoro voices at several
-speeds using the same model bundle as Intercom:
-
-```bash
-~/.intercom/venv-kokoro/bin/python scripts/voice_audition.py \
-  --model ~/.intercom/models/kokoro/kokoro-v1.0.onnx \
-  --voices-file ~/.intercom/models/kokoro/voices-v1.0.bin
-open build/voice-audition/index.html
-```
-
-The tool also accepts blends such as
-`--voices bm_lewis bm_lewis+bm_george:0.25`. Ratings are stored locally in the
-browser; reveal each clip's settings only after listening.
 
 ## License
 
