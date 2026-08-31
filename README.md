@@ -3,7 +3,6 @@
 A custom, local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32 (or any client) speaks PCM in, Intercom runs **whisper.cpp** STT + **Kokoro** TTS, and Arbiter stays text + SSE in the middle.
 
 ![PCB Board Front](.github/board_front.jpg)
-![PCB Board Rear](.github/board_rear.jpg)
 
 ```
 ESP32  --HTTP PTT PCM-->  Intercom  --text/SSE-->  arbiter --api
