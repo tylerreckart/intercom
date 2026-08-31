@@ -39,9 +39,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.0,
-          "height": 1.5,
-          "width": 1.5
+          "drill": 0.8,
+          "height": 1.27,
+          "width": 1.27
         },
         "silk_line_width": 0.1,
         "silk_text_italic": false,
@@ -523,10 +523,10 @@
   "pcbnew": {
     "last_paths": {
       "idf": "",
-      "netlist": "./",
+      "netlist": "",
       "plot": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "intercom.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
@@ -611,12 +611,42 @@
           "label": "Datasheet",
           "name": "Datasheet",
           "show": true
+        },
+        {
+          "group_by": false,
+          "label": "Sim.Type",
+          "name": "Sim.Type",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Description",
+          "name": "Description",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Sim.Pins",
+          "name": "Sim.Pins",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "#",
+          "name": "${ITEM_NUMBER}",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Sim.Device",
+          "name": "Sim.Device",
+          "show": false
         }
       ],
       "filter_string": "",
       "group_symbols": true,
       "include_excluded_from_bom": true,
-      "name": "Default Editing",
+      "name": "",
       "sort_asc": true,
       "sort_field": "Reference"
     },
@@ -657,29 +687,21 @@
     "top_level_sheets": [
       {
         "filename": "intercom.kicad_sch",
-        "name": "intercom",
+        "name": "Root",
         "uuid": "af1598c9-1c4f-48df-8fc6-849725ed1294"
       }
     ],
-    "used_designators": "",
+    "used_designators": "#FLGGND1,BT1,R1-4,#PWR1-13,#PWR415-416,D1,A1,SW1,C1-8,C32,FB1-2,U1,MK1,#FLGVBAT1,J1,S1,#FLG5V1,RV1",
     "variants": []
   },
   "sheets": [
     [
       "af1598c9-1c4f-48df-8fc6-849725ed1294",
-      "intercom"
+      "Root"
     ],
     [
       "b7c2e91a-4f3d-4a8e-9c1b-2e5d8a7f6b40",
       "Power"
-    ],
-    [
-      "c3e8a1b0-7d24-4f91-9c5e-2a6b8d4e1f70",
-      "MCU"
-    ],
-    [
-      "e9f2c4d1-8a35-4b06-b7c8-3d4e5f6a7b81",
-      "USB power"
     ]
   ],
   "text_variables": {},
