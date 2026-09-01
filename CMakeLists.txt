@@ -28,6 +28,9 @@ FetchContent_MakeAvailable(httplib)
 find_package(OpenSSL REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
+if(TARGET SQLite::SQLite3 AND NOT TARGET SQLite3::SQLite3)
+  add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
 
 add_executable(intercom
   src/main.cpp
