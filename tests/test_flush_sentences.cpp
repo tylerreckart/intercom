@@ -72,6 +72,31 @@ void test_multiple_sentences() {
   CHECK_EQ(buf, "leftover");
 }
 
+void test_early_words() {
+  std::string growing = "one two three four five six sev";
+  auto none = intercom::flush_sentences(growing, false, 7);
+  CHECK(none.empty());
+  CHECK_EQ(growing, "one two three four five six sev");
+
+  std::string seven = "one two three four five six seven ";
+  auto chunk = intercom::flush_sentences(seven, false, 7);
+  CHECK_SIZE(chunk, 1);
+  CHECK_EQ(chunk[0], "one two three four five six seven");
+  CHECK(seven.empty());
+
+  std::string mixed = "Hello. one two three four five six seven leftover";
+  auto both = intercom::flush_sentences(mixed, false, 7);
+  CHECK_SIZE(both, 2);
+  CHECK_EQ(both[0], "Hello.");
+  CHECK_EQ(both[1], "one two three four five six seven");
+  CHECK_EQ(mixed, "leftover");
+
+  std::string short_buf = "Hello there";
+  auto still = intercom::flush_sentences(short_buf, false, 7);
+  CHECK(still.empty());
+  CHECK_EQ(short_buf, "Hello there");
+}
+
 }  // namespace
 
 int main() {
@@ -79,6 +104,7 @@ int main() {
   test_no_emit_until_boundary();
   test_final_flush_unpunctuated();
   test_multiple_sentences();
+  test_early_words();
   if (g_fails != 0) {
     std::cerr << g_fails << " failure(s)\n";
     return 1;

@@ -15,6 +15,14 @@ bool contains_any(const std::string& text,
   return false;
 }
 
+bool equals_any(const std::string& text,
+                const std::initializer_list<const char*>& needles) {
+  for (const char* needle : needles) {
+    if (text == needle) return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 SpeechDelivery classify_speech_delivery(std::string_view text) {
@@ -28,8 +36,11 @@ SpeechDelivery classify_speech_delivery(std::string_view text) {
     return SpeechDelivery::Firm;
   }
 
-  if (contains_any(lower, {"just a moment", "one moment", "let me check",
-                           "i'll have a look", "still looking",
+  if (equals_any(lower, {"yes.", "yes", "got it.", "got it"}) ||
+      contains_any(lower, {"yes, sir", "of course", "very good", "right away",
+                           "certainly", "still with you", "nearly there",
+                           "just a moment", "just a tick", "one moment",
+                           "let me check", "i'll have a look", "still looking",
                            "hang on"})) {
     return SpeechDelivery::Subdued;
   }

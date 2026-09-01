@@ -1,4 +1,5 @@
 #include "intercom/arbiter_client.hpp"
+#include "intercom/filler_client.hpp"
 #include "intercom/session_store.hpp"
 #include "intercom/stt.hpp"
 #include "intercom/tts.hpp"
@@ -135,6 +136,175 @@ int main() {
   }
 
   std::filesystem::remove(db_path);
+
+  {
+    class EarlyArbiter : public intercom::ArbiterClient {
+     public:
+      explicit EarlyArbiter(std::shared_ptr<RecordingTts> tts)
+          : ArbiterClient("http://127.0.0.1:9", "", "arthur"), tts_(std::move(tts)) {}
+      std::optional<std::int64_t> create_conversation(const std::string&,
+                                                      std::string*) const override {
+        return 7;
+      }
+      bool send_message(std::int64_t, const std::string&, const std::string&,
+                        intercom::ArbiterStreamCallbacks cbs, std::atomic<bool>*,
+                        std::string*) const override {
+        if (cbs.on_request_id) cbs.on_request_id("req-early");
+        if (cbs.on_text_delta) {
+          cbs.on_text_delta("one two three four five six seven leftover");
+        }
+        for (int i = 0; i < 200 && tts_->count() < 1; ++i) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        spoke_before_done = tts_->count() >= 1;
+        if (cbs.on_done) cbs.on_done(true, "one two three four five six seven leftover", "");
+        return true;
+      }
+      bool cancel_request(const std::string&, std::string*) const override { return true; }
+      mutable bool spoke_before_done = false;
+
+     private:
+      std::shared_ptr<RecordingTts> tts_;
+    };
+
+    auto tts_e = std::make_shared<RecordingTts>();
+    auto arb_e = std::make_shared<EarlyArbiter>(tts_e);
+    auto stt_e = std::make_shared<DummyStt>();
+    const auto db_e = std::filesystem::temp_directory_path() / "intercom_early_flush.db";
+    std::filesystem::remove(db_e);
+    auto sessions_e = std::make_shared<intercom::SessionStore>(db_e.string());
+    CHECK(sessions_e->open(&err));
+    intercom::Config cfg;
+    cfg.fast_path = false;
+    cfg.filler.enabled = false;
+    cfg.early_flush_words = 7;
+    intercom::TurnPipeline pipe(cfg, stt_e, tts_e, arb_e, sessions_e, nullptr);
+    CollectingSink sink_e;
+    const auto r = pipe.run_text_utterance("dev-e", "long answer please", sink_e);
+    CHECK(r.ok);
+    CHECK(arb_e->spoke_before_done);
+    const auto texts_e = tts_e->snapshot();
+    CHECK(texts_e.size() >= 1);
+    if (!texts_e.empty()) {
+      CHECK(texts_e[0].find("one two three four five six seven") != std::string::npos);
+    }
+    std::filesystem::remove(db_e);
+  }
+
+  {
+    class SlowToolArbiter : public intercom::ArbiterClient {
+     public:
+      SlowToolArbiter() : ArbiterClient("http://127.0.0.1:9", "", "arthur") {}
+      std::optional<std::int64_t> create_conversation(const std::string&,
+                                                      std::string*) const override {
+        return 8;
+      }
+      bool send_message(std::int64_t, const std::string&, const std::string&,
+                        intercom::ArbiterStreamCallbacks cbs, std::atomic<bool>*,
+                        std::string*) const override {
+        if (cbs.on_request_id) cbs.on_request_id("req-tool");
+        if (cbs.on_tool_call) cbs.on_tool_call("search");
+        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+        if (cbs.on_text_delta) cbs.on_text_delta("Here you go.");
+        if (cbs.on_done) cbs.on_done(true, "Here you go.", "");
+        return true;
+      }
+      bool cancel_request(const std::string&, std::string*) const override { return true; }
+    };
+
+    auto tts_f = std::make_shared<RecordingTts>();
+    auto arb_f = std::make_shared<SlowToolArbiter>();
+    auto stt_f = std::make_shared<DummyStt>();
+    const auto db_f = std::filesystem::temp_directory_path() / "intercom_filler_ack.db";
+    std::filesystem::remove(db_f);
+    auto sessions_f = std::make_shared<intercom::SessionStore>(db_f.string());
+    CHECK(sessions_f->open(&err));
+    intercom::Config cfg;
+    cfg.fast_path = false;
+    cfg.filler.enabled = true;
+    cfg.filler.instant_ack_ms = 700;
+    cfg.filler.tool_ack_ms = 20;
+    cfg.early_flush_words = 0;
+    auto filler = std::make_shared<intercom::FillerClient>(cfg.filler);
+    intercom::TurnPipeline pipe(cfg, stt_f, tts_f, arb_f, sessions_f, filler);
+    CollectingSink sink_f;
+    const auto r = pipe.run_text_utterance("dev-f", "look this up please", sink_f);
+    CHECK(r.ok);
+    const auto texts_f = tts_f->snapshot();
+    CHECK(texts_f.size() >= 2);
+    if (texts_f.size() >= 2) {
+      CHECK(texts_f[0] == "Of course.");
+      CHECK(texts_f[1].find("Here you go") != std::string::npos);
+    }
+    std::filesystem::remove(db_f);
+  }
+
+  {
+    class SlowAnswerArbiter : public intercom::ArbiterClient {
+     public:
+      SlowAnswerArbiter() : ArbiterClient("http://127.0.0.1:9", "", "arthur") {}
+      std::optional<std::int64_t> create_conversation(const std::string&,
+                                                      std::string*) const override {
+        return 9;
+      }
+      bool send_message(std::int64_t, const std::string&, const std::string&,
+                        intercom::ArbiterStreamCallbacks cbs, std::atomic<bool>*,
+                        std::string*) const override {
+        if (cbs.on_request_id) cbs.on_request_id("req-local");
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        if (cbs.on_text_delta) cbs.on_text_delta("Done.");
+        if (cbs.on_done) cbs.on_done(true, "Done.", "");
+        return true;
+      }
+      bool cancel_request(const std::string&, std::string*) const override { return true; }
+    };
+
+    auto tts_l = std::make_shared<RecordingTts>();
+    auto arb_l = std::make_shared<SlowAnswerArbiter>();
+    auto stt_l = std::make_shared<DummyStt>();
+    const auto db_l = std::filesystem::temp_directory_path() / "intercom_local_ack.db";
+    std::filesystem::remove(db_l);
+    auto sessions_l = std::make_shared<intercom::SessionStore>(db_l.string());
+    CHECK(sessions_l->open(&err));
+    intercom::Config cfg;
+    cfg.fast_path = false;
+    cfg.filler.enabled = true;
+    cfg.filler.instant_ack_ms = 40;
+    cfg.filler.tool_ack_ms = 250;
+    cfg.early_flush_words = 0;
+    auto filler = std::make_shared<intercom::FillerClient>(cfg.filler);
+    intercom::TurnPipeline pipe(cfg, stt_l, tts_l, arb_l, sessions_l, filler);
+    CollectingSink sink_l;
+    const auto r = pipe.run_text_utterance("dev-l", "a slow question", sink_l);
+    CHECK(r.ok);
+    const auto texts_l = tts_l->snapshot();
+    CHECK(texts_l.size() >= 2);
+    if (!texts_l.empty()) {
+      const auto phrases = intercom::FillerClient::instant_ack_phrases();
+      bool cached = false;
+      for (const auto& p : phrases) {
+        if (texts_l[0] == p) cached = true;
+      }
+      CHECK(cached);
+    }
+    std::filesystem::remove(db_l);
+  }
+
+  CHECK(intercom::FillerClient::tool_ack("web_search") == "Of course.");
+  CHECK(intercom::FillerClient::tool_ack("mem_read") == "Yes, sir.");
+  CHECK(intercom::FillerClient::tool_ack("exec") == "Certainly.");
+
+  const auto local = intercom::FillerClient::instant_ack_phrases();
+  CHECK(!local.empty());
+  for (const auto& p : local) {
+    CHECK(p != "Right.");
+    CHECK(p.find("see") == std::string::npos);
+    CHECK(p.find("look") == std::string::npos);
+    CHECK(p.find("check") == std::string::npos);
+    CHECK(p.find("think") == std::string::npos);
+  }
+  const auto cached = intercom::FillerClient::cached_ack_phrases();
+  CHECK(cached.size() >= local.size());
 
   {
     auto tts_off = std::make_shared<RecordingTts>();

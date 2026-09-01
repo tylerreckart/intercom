@@ -1,6 +1,7 @@
 #include "intercom/http_server.hpp"
 #include "intercom/pcm_stream.hpp"
 #include "intercom/util.hpp"
+#include "intercom/ws.hpp"
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -19,9 +20,11 @@ namespace intercom {
 namespace {
 
 httplib::Server* g_svr = nullptr;
+WsServer* g_ws = nullptr;
 
 void on_stop_signal(int) {
   if (g_svr) g_svr->stop();
+  if (g_ws) g_ws->stop();
 }
 
 std::string bearer_token(const httplib::Request& req) {
@@ -146,6 +149,18 @@ void run_http_server(ServerDeps deps) {
   std::signal(SIGINT, on_stop_signal);
   std::signal(SIGTERM, on_stop_signal);
 
+  WsServer ws(deps);
+  if (deps.config.ws_listen_port > 0) {
+    if (!ws.listen(deps.config.listen_host, deps.config.ws_listen_port)) {
+      std::cerr << "intercom ws failed to bind " << deps.config.listen_host << ":"
+                << deps.config.ws_listen_port << std::endl;
+    } else {
+      g_ws = &ws;
+      std::cout << "intercom ws on ws://" << deps.config.listen_host << ":" << ws.port()
+                << "/v1/stream" << std::endl;
+    }
+  }
+
   svr.Get("/health", [&](const httplib::Request&, httplib::Response& res) {
     std::string stt_detail;
     std::string tts_detail;
@@ -158,6 +173,9 @@ void run_http_server(ServerDeps deps) {
         {"whisper", {{"ready", stt_ok}, {"detail", stt_detail}}},
         {"kokoro", {{"ready", tts_ok}, {"detail", tts_detail}}},
         {"arbiter", {{"reachable", arb_ok}, {"detail", arb_detail}}},
+        {"ws",
+         {{"port", deps.config.ws_listen_port},
+          {"path", "/v1/stream"}}},
     };
     res.status = (stt_ok && tts_ok) ? 200 : 503;
     res.set_content(j.dump(2), "application/json");
@@ -282,6 +300,8 @@ void run_http_server(ServerDeps deps) {
     std::cerr << "intercom failed to bind " << deps.config.listen_host << ":"
               << deps.config.listen_port << std::endl;
   }
+  g_ws = nullptr;
+  ws.stop();
 }
 
 }  // namespace intercom

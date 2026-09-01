@@ -54,4 +54,14 @@ ffplay -f s16le -ar 24000 -ac 1 reply.pcm
 
 ## WebSocket (v1.1)
 
-Not implemented. Future duplex should reuse `TurnPipeline` / `AudioSink` and stream mic frames up while Intercom streams PCM down on one connection.
+`ws://<host>:8093/v1/stream` (config `ws_listen_port`, `0` disables it).
+
+1. Upgrade with the same device bearer and `X-Device-Id` as HTTP.
+2. While PTT is held, send binary frames of mono s16le PCM (24 kHz).
+3. On release, send `{"type":"end"}`. Intercom runs Whisper on the buffered
+   audio and streams reply PCM back as binary frames.
+4. `{"type":"text","text":"status"}` skips STT (same as `/v1/utterance/text`).
+5. HTTP PTT on `:8090` remains the firmware default until the MCU grows a WS
+   client.
+
+See [docs/api.md](api.md) for the frame table.

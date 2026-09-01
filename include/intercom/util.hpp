@@ -64,6 +64,9 @@ std::string trim(std::string_view s);
 std::string fold_phatic(std::string_view raw);
 
 // Pull completed sentences from a growing buffer; leaves incomplete tail in buf.
-std::vector<std::string> flush_sentences(std::string& buf, bool final_flush);
+// When early_words > 0 and no sentence boundary is ready, emit a chunk once
+// at least that many words are followed by a break (space or comma).
+std::vector<std::string> flush_sentences(std::string& buf, bool final_flush,
+                                         std::size_t early_words = 0);
 
 }  // namespace intercom

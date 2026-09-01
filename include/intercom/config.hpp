@@ -51,9 +51,12 @@ struct FillerConfig {
   std::string api_base_url = "https://openrouter.ai/api/v1";
   std::string api_key;
   std::string model = "deepseek/deepseek-v4-flash";
-  // Speak a local backchannel this many ms after the turn starts (0 = disabled).
-  // High enough that a fast Arbiter reply skips filler entirely.
+  // Speak a cached local backchannel this many ms after the turn starts
+  // (0 = disabled). High enough that a fast Arbiter reply skips filler.
   int instant_ack_ms = 700;
+  // After a tool_call, speak a cached tool ack this many ms later if no
+  // local ack has been spoken yet (0 = immediately).
+  int tool_ack_ms = 250;
   // Earliest ms to speak an LLM phrase when instant ack is off.
   int min_silence_ms = 1100;
   int followup_silence_ms = 8000;
@@ -66,6 +69,11 @@ struct FillerConfig {
 struct Config {
   std::string listen_host = "127.0.0.1";
   int listen_port = 8090;
+  // WebSocket duplex (0 = disabled). PCM up while PTT is held; PCM down on the
+  // same connection. HTTP PTT on listen_port is unchanged.
+  int ws_listen_port = 8093;
+  // Start Kokoro after this many streaming words, even without .?! (0 = off).
+  int early_flush_words = 7;
   std::string device_token;
   std::unordered_map<std::string, std::string> devices;  // device_id -> token
   std::string arbiter_base_url = "http://127.0.0.1:8080";

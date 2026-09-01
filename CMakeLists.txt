@@ -48,6 +48,7 @@ add_executable(intercom
   src/clock.cpp
   src/turn_pipeline.cpp
   src/http_server.cpp
+  src/ws.cpp
   src/util.cpp
   src/speakable.cpp
   src/managed_server.cpp
@@ -172,4 +173,33 @@ if(APPLE)
   target_compile_definitions(test_sentence_tts PRIVATE CPPHTTPLIB_USE_POLL)
 endif()
 add_test(NAME test_sentence_tts COMMAND test_sentence_tts)
+
+add_executable(test_ws_stream
+  tests/test_ws_stream.cpp
+  src/ws.cpp
+  src/config.cpp
+  src/turn_pipeline.cpp
+  src/speakable.cpp
+  src/util.cpp
+  src/session_store.cpp
+  src/fast_path.cpp
+  src/home_intent.cpp
+  src/home_client.cpp
+  src/clock.cpp
+  src/arbiter_client.cpp
+  src/filler_client.cpp
+)
+target_include_directories(test_ws_stream PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(test_ws_stream PRIVATE
+  nlohmann_json::nlohmann_json
+  httplib::httplib
+  SQLite3::SQLite3
+  Threads::Threads
+)
+if(APPLE)
+  target_compile_definitions(test_ws_stream PRIVATE CPPHTTPLIB_USE_POLL)
+endif()
+add_test(NAME test_ws_stream COMMAND test_ws_stream)
 

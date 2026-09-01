@@ -4,6 +4,7 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <memory>
 #include <optional>
@@ -100,12 +101,14 @@ std::string cap_words(std::string s, std::size_t max_words) {
 std::string build_system_prompt(FillerStage stage) {
   if (stage == FillerStage::FollowUp) {
     return "Arthur, a British voice on a home intercom. The user is still waiting. "
-           "One quiet aside, 2-4 words, like 'still looking' or 'one moment'. "
-           "Not a status report. Output only the phrase.";
+           "Acknowledge, 1-3 words, like 'yes' or 'still with you'. "
+           "Do not put them on hold. Do not say you are looking or thinking. "
+           "Output only the phrase.";
   }
   return "Arthur, a British voice on a home intercom. The user just asked something. "
-         "One short aside, 3-5 words, like 'right, let's see' or 'I'll have a look'. "
-         "Do not narrate that you are thinking or working. Output only the phrase.";
+         "Acknowledge that you heard them, 1-3 words, like 'yes, sir' or 'of course'. "
+         "Do not put them on hold. Do not narrate thinking, looking, or working. "
+         "Output only the phrase.";
 }
 
 std::string build_user_prompt(const std::string& transcript,
@@ -120,15 +123,15 @@ std::string build_user_prompt(const std::string& transcript,
 
 std::string fallback_phrase(FillerStage stage) {
   static const char* kInitial[] = {
-      "Right, let's see.",
-      "I'll have a look.",
-      "Just a tick.",
-      "Let me check.",
+      "Yes, sir.",
+      "Of course.",
+      "Very good.",
+      "Certainly.",
   };
   static const char* kFollowUp[] = {
-      "Still looking.",
-      "One moment.",
-      "Hang on.",
+      "Yes.",
+      "Still with you.",
+      "Nearly there.",
   };
   static thread_local std::mt19937 rng{std::random_device{}()};
   if (stage == FillerStage::FollowUp) {
@@ -145,13 +148,23 @@ FillerClient::FillerClient(FillerConfig config) : config_(std::move(config)) {}
 
 std::vector<std::string> FillerClient::instant_ack_phrases() {
   return {
-      "Right, let's see.",
-      "I'll have a look.",
-      "Just a tick.",
-      "Leave it with me.",
-      "Let me check.",
-      "One moment.",
+      "Yes, sir.",
+      "Of course.",
+      "Very good.",
+      "Right away.",
+      "Certainly.",
   };
+}
+
+std::vector<std::string> FillerClient::cached_ack_phrases() {
+  auto out = instant_ack_phrases();
+  for (const char* tool : {"search", "read", "schedule", "exec"}) {
+    const std::string phrase = tool_ack(tool);
+    if (std::find(out.begin(), out.end(), phrase) == out.end()) {
+      out.push_back(phrase);
+    }
+  }
+  return out;
 }
 
 std::string FillerClient::instant_ack() {
@@ -163,6 +176,22 @@ std::string FillerClient::instant_ack() {
   if (phrases.size() > 1 && i == last) i = (i + 1) % phrases.size();
   last = i;
   return phrases[i];
+}
+
+std::string FillerClient::tool_ack(std::string_view tool) {
+  if (tool.find("search") != std::string_view::npos ||
+      tool.find("fetch") != std::string_view::npos ||
+      tool.find("browse") != std::string_view::npos) {
+    return "Of course.";
+  }
+  if (tool.find("schedule") != std::string_view::npos) {
+    return "Very good.";
+  }
+  if (tool.find("read") != std::string_view::npos ||
+      tool.find("list") != std::string_view::npos) {
+    return "Yes, sir.";
+  }
+  return "Certainly.";
 }
 
 std::string FillerClient::generate(const std::string& transcript,

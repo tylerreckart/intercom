@@ -11,6 +11,8 @@
   "sample_rate": 24000,
   "channels": 1,
   "fast_path": true,
+  "ws_listen_port": 8093,
+  "early_flush_words": 7,
   "warm_prefix": true,
   "home": {
     "ha_base_url": "",
@@ -65,6 +67,7 @@
     "api_key": "",
     "model": "deepseek/deepseek-v4-flash",
     "instant_ack_ms": 700,
+    "tool_ack_ms": 250,
     "min_silence_ms": 1100,
     "followup_silence_ms": 8000,
     "max_followups": 0,

@@ -383,7 +383,48 @@ std::string fold_phatic(std::string_view raw) {
   return joined;
 }
 
-std::vector<std::string> flush_sentences(std::string& buf, bool final_flush) {
+namespace {
+
+// Index after the Nth word if a break follows it; 0 if the Nth word is still
+// growing or there are fewer than N words.
+std::size_t early_word_cut(std::string_view s, std::size_t n) {
+  if (n == 0) return 0;
+  std::size_t words = 0;
+  bool in_word = false;
+  for (std::size_t i = 0; i < s.size(); ++i) {
+    if (std::isspace(static_cast<unsigned char>(s[i]))) {
+      if (in_word) {
+        in_word = false;
+        if (words >= n) {
+          std::size_t j = i;
+          while (j < s.size() &&
+                 (s[j] == ',' || s[j] == ';' || s[j] == ':')) {
+            ++j;
+          }
+          return j;
+        }
+      }
+      continue;
+    }
+    if (s[i] == ',' || s[i] == ';' || s[i] == ':') {
+      if (in_word) {
+        in_word = false;
+        if (words >= n) return i + 1;
+      }
+      continue;
+    }
+    if (!in_word) {
+      in_word = true;
+      ++words;
+    }
+  }
+  return 0;
+}
+
+}  // namespace
+
+std::vector<std::string> flush_sentences(std::string& buf, bool final_flush,
+                                         std::size_t early_words) {
   std::vector<std::string> out;
   std::size_t start = 0;
   for (std::size_t i = 0; i < buf.size(); ++i) {
@@ -408,8 +449,22 @@ std::vector<std::string> flush_sentences(std::string& buf, bool final_flush) {
     std::string rest = trim(buf.substr(start));
     if (!rest.empty()) out.push_back(std::move(rest));
     buf.clear();
-  } else {
-    buf.erase(0, start);
+    return out;
+  }
+
+  buf.erase(0, start);
+  if (early_words > 0) {
+    const std::size_t cut = early_word_cut(buf, early_words);
+    if (cut > 0) {
+      std::string chunk = trim(buf.substr(0, cut));
+      if (!chunk.empty()) out.push_back(std::move(chunk));
+      std::size_t next = cut;
+      while (next < buf.size() &&
+             std::isspace(static_cast<unsigned char>(buf[next]))) {
+        ++next;
+      }
+      buf.erase(0, next);
+    }
   }
   return out;
 }
