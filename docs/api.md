@@ -105,7 +105,7 @@ are not repeated.
 Related short sentences received together are synthesized as one phrase so
 prosody carries across them. PCM is faded once at the bridge and followed by
 punctuation-aware pauses (short after commas, longer after questions). A cached
-local ack (`Yes, sir.`, `Right.`, `Of course.`, …) can play after `filler.instant_ack_ms` if
+local ack (`Yes, sir.`, `Of course.`, `Very good.`, …) can play after `filler.instant_ack_ms` if
 Arbiter has not started answering. A tool call speaks a matching cached ack
 after `filler.tool_ack_ms` (default 250 ms) when nothing has been said yet.
 

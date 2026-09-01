@@ -124,9 +124,9 @@ std::string build_user_prompt(const std::string& transcript,
 std::string fallback_phrase(FillerStage stage) {
   static const char* kInitial[] = {
       "Yes, sir.",
-      "Right.",
       "Of course.",
       "Very good.",
+      "Certainly.",
   };
   static const char* kFollowUp[] = {
       "Yes.",
@@ -149,10 +149,10 @@ FillerClient::FillerClient(FillerConfig config) : config_(std::move(config)) {}
 std::vector<std::string> FillerClient::instant_ack_phrases() {
   return {
       "Yes, sir.",
-      "Right.",
       "Of course.",
       "Very good.",
       "Right away.",
+      "Certainly.",
   };
 }
 
@@ -191,7 +191,7 @@ std::string FillerClient::tool_ack(std::string_view tool) {
       tool.find("list") != std::string_view::npos) {
     return "Yes, sir.";
   }
-  return "Right.";
+  return "Certainly.";
 }
 
 std::string FillerClient::generate(const std::string& transcript,

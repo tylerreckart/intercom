@@ -291,11 +291,12 @@ int main() {
 
   CHECK(intercom::FillerClient::tool_ack("web_search") == "Of course.");
   CHECK(intercom::FillerClient::tool_ack("mem_read") == "Yes, sir.");
-  CHECK(intercom::FillerClient::tool_ack("exec") == "Right.");
+  CHECK(intercom::FillerClient::tool_ack("exec") == "Certainly.");
 
   const auto local = intercom::FillerClient::instant_ack_phrases();
   CHECK(!local.empty());
   for (const auto& p : local) {
+    CHECK(p != "Right.");
     CHECK(p.find("see") == std::string::npos);
     CHECK(p.find("look") == std::string::npos);
     CHECK(p.find("check") == std::string::npos);
