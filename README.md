@@ -13,7 +13,7 @@ Intercom keeps Whisper and Kokoro loaded in local HTTP servers (`whisper-server`
 
 Colocate Intercom on the same host as `arbiter --api` (default `http://127.0.0.1:8080`). Device tokens never see the Arbiter bearer.
 
-The default agent is **Arthur** — a British voice assistant with full Arbiter tool access (`config/arthur.agent.json`).
+The default agent is **Arthur** — a British voice assistant with full Arbiter tool access (`config/arthur.agent.json`). Hallway commands (timers, lights, volume, home weather, next alarm) skip Arbiter when `home.ha_base_url` and `home.ha_token` point at Home Assistant. At boot Intercom sends a silent `PREFIX WARM` turn so a local model can cache Arthur's constitution before the first PTT.
 
 ## Build
 

@@ -1,6 +1,8 @@
 #include "intercom/turn_pipeline.hpp"
+#include "intercom/home_client.hpp"
 #include "intercom/speakable.hpp"
 #include "intercom/util.hpp"
+#include "intercom/warm.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -9,6 +11,7 @@
 #include <future>
 #include <iostream>
 #include <optional>
+#include <set>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -71,7 +74,8 @@ TurnPipeline::TurnPipeline(Config config,
       arbiter_(std::move(arbiter)),
       sessions_(std::move(sessions)),
       filler_(std::move(filler)),
-      fast_path_(config_.fast_path) {}
+      fast_path_(config_.fast_path, config_.home,
+                 std::make_shared<HomeClient>(config_.home)) {}
 
 void TurnPipeline::register_turn(std::shared_ptr<TurnHandle> h) {
   std::lock_guard<std::mutex> lk(turns_mu_);
@@ -92,6 +96,42 @@ std::shared_ptr<TurnHandle> TurnPipeline::find_turn(const std::string& turn_id) 
 
 std::optional<DeviceSession> TurnPipeline::session_for(const std::string& device_id) const {
   return sessions_->get(device_id);
+}
+
+void TurnPipeline::warm_prefix() {
+  if (!config_.warm_prefix) return;
+
+  std::set<std::string> ids;
+  for (const auto& kv : config_.devices) {
+    if (!kv.first.empty()) ids.insert(kv.first);
+  }
+  for (const auto& s : sessions_->list()) {
+    if (!s.device_id.empty()) ids.insert(s.device_id);
+  }
+  if (ids.empty()) ids.insert("intercom-host");
+
+  int ok = 0;
+  int total = 0;
+  for (const auto& id : ids) {
+    ++total;
+    std::string err;
+    const auto conv = ensure_conversation(id, &err);
+    if (conv <= 0) {
+      std::cerr << "intercom warm: " << id << ": "
+                << (err.empty() ? "no conversation" : err) << std::endl;
+      continue;
+    }
+    std::atomic<bool> cancel{false};
+    const std::string key = "warm-" + id + "-" + make_turn_id();
+    if (!arbiter_->send_message(conv, kPrefixWarmMessage, key, ArbiterStreamCallbacks{},
+                                &cancel, &err)) {
+      std::cerr << "intercom warm: " << id << ": "
+                << (err.empty() ? "send failed" : err) << std::endl;
+      continue;
+    }
+    ++ok;
+  }
+  std::cout << "intercom warm: " << ok << "/" << total << std::endl;
 }
 
 std::int64_t TurnPipeline::ensure_conversation(const std::string& device_id, std::string* err) {
@@ -229,6 +269,7 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
 
   if (auto fp = fast_path_.try_handle(result.transcript)) {
     result.used_fast_path = true;
+    result.fast_path_kind = fp->kind;
     path_name = "fast";
     pending_kind = "fast";
     if (auto existing = sessions_->get(device_id)) {

@@ -107,6 +107,34 @@ Config Config::load(const std::string& path) {
   c.fast_path = require_bool(j, "fast_path", c.fast_path);
   c.ws_listen_port = require_int(j, "ws_listen_port", c.ws_listen_port);
   c.early_flush_words = require_int(j, "early_flush_words", c.early_flush_words);
+  c.warm_prefix = require_bool(j, "warm_prefix", c.warm_prefix);
+
+  if (j.contains("home") && j["home"].is_object()) {
+    const auto& h = j["home"];
+    c.home.ha_base_url = require_string(h, "ha_base_url", c.home.ha_base_url);
+    c.home.ha_token = require_string(h, "ha_token", c.home.ha_token);
+    c.home.timeout_ms = require_int(h, "timeout_ms", c.home.timeout_ms);
+    c.home.weather_entity =
+        require_string(h, "weather_entity", c.home.weather_entity);
+    c.home.timer_entity = require_string(h, "timer_entity", c.home.timer_entity);
+    c.home.media_player = require_string(h, "media_player", c.home.media_player);
+    c.home.volume_step = require_number(h, "volume_step", c.home.volume_step);
+    c.home.alarm_entity = require_string(h, "alarm_entity", c.home.alarm_entity);
+    if (h.contains("lights") && h["lights"].is_object()) {
+      for (auto it = h["lights"].begin(); it != h["lights"].end(); ++it) {
+        if (it.value().is_string()) {
+          c.home.lights[to_lower(it.key())] = it.value().get<std::string>();
+        }
+      }
+    }
+  }
+  if (c.home.ha_token.empty()) {
+    if (const char* tok = std::getenv("HOMEASSISTANT_TOKEN")) {
+      c.home.ha_token = tok;
+    } else if (const char* tok = std::getenv("SUPERVISOR_TOKEN")) {
+      c.home.ha_token = tok;
+    }
+  }
 
   if (j.contains("devices") && j["devices"].is_object()) {
     for (auto it = j["devices"].begin(); it != j["devices"].end(); ++it) {

@@ -85,6 +85,29 @@ std::optional<DeviceSession> SessionStore::get(const std::string& device_id) con
   return out;
 }
 
+std::vector<DeviceSession> SessionStore::list() const {
+  std::vector<DeviceSession> out;
+  if (!db_) return out;
+  sqlite3_stmt* stmt = nullptr;
+  const char* sql =
+      "SELECT device_id, conversation_id, last_turn_id, updated_at "
+      "FROM device_sessions ORDER BY device_id";
+  if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+    return out;
+  }
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    DeviceSession s;
+    s.device_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+    s.conversation_id = sqlite3_column_int64(stmt, 1);
+    const unsigned char* turn = sqlite3_column_text(stmt, 2);
+    s.last_turn_id = turn ? reinterpret_cast<const char*>(turn) : "";
+    s.updated_at = sqlite3_column_int64(stmt, 3);
+    out.push_back(std::move(s));
+  }
+  sqlite3_finalize(stmt);
+  return out;
+}
+
 bool SessionStore::upsert(const DeviceSession& session, std::string* err) {
   if (!db_) {
     if (err) *err = "session store not open";

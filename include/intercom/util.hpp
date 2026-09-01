@@ -60,6 +60,9 @@ std::vector<std::string> coalesce_speech_sentences(
 std::string to_lower(std::string s);
 std::string trim(std::string_view s);
 
+// Lowercase, strip punctuation, drop leading/trailing "arthur" / "please" / "sir".
+std::string fold_phatic(std::string_view raw);
+
 // Pull completed sentences from a growing buffer; leaves incomplete tail in buf.
 // When early_words > 0 and no sentence boundary is ready, emit a chunk once
 // at least that many words are followed by a break (space or comma).

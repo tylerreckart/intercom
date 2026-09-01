@@ -1,7 +1,9 @@
 #include "intercom/fast_path.hpp"
 #include "intercom/clock.hpp"
+#include "intercom/home_client.hpp"
 
 #include <iostream>
+#include <memory>
 #include <string>
 
 namespace {
@@ -78,7 +80,10 @@ int main() {
 
   auto echo = on.try_handle("echo hello there");
   CHECK(echo.has_value());
-  if (echo) CHECK(echo->reply == "hello there");
+  if (echo) {
+    CHECK(echo->reply == "hello there");
+    CHECK(echo->kind == "echo");
+  }
 
   auto clock = on.try_handle("what time is it");
   CHECK(clock.has_value());
@@ -87,7 +92,17 @@ int main() {
     CHECK(contains(clock->reply, "sir"));
     CHECK(!contains(clock->reply, "AM"));
     CHECK(!contains(clock->reply, "PM"));
+    CHECK(clock->kind == "clock");
   }
+
+  auto how_long = on.try_handle("set a timer");
+  CHECK(how_long.has_value());
+  if (how_long) {
+    CHECK(how_long->reply == "How long, sir?");
+    CHECK(how_long->kind == "timer");
+  }
+  CHECK(!on.try_handle("set a timer for 5 minutes").has_value());
+  CHECK(!on.try_handle("turn on the kitchen lights").has_value());
 
   auto date = on.try_handle("what's the date");
   CHECK(date.has_value());
@@ -100,8 +115,46 @@ int main() {
   CHECK(intercom::is_social_turn("Good morning, Arthur."));
   CHECK(intercom::withholds_fillers("good morning"));
   CHECK(intercom::withholds_fillers("what time is it"));
-  CHECK(!intercom::withholds_fillers("what's the weather"));
+  CHECK(intercom::withholds_fillers("what's the weather"));
+  CHECK(intercom::withholds_fillers("set a timer for 5 minutes"));
+  CHECK(!intercom::withholds_fillers("what's the weather in Tokyo"));
   CHECK(!intercom::is_clock_query("what time is it in Tokyo"));
+
+  class FakeHome : public intercom::HomeClient {
+   public:
+    FakeHome() : HomeClient(intercom::HomeConfig{}) {}
+    bool configured() const override { return true; }
+    std::string run(const intercom::HomeIntent& intent, std::string*) const override {
+      if (intent.kind == intercom::HomeIntentKind::Timer) {
+        return intercom::spoken_duration(intent.timer_seconds) + ", sir.";
+      }
+      if (intent.kind == intercom::HomeIntentKind::Weather) {
+        return "It's twelve degrees and cloudy, sir.";
+      }
+      if (intent.kind == intercom::HomeIntentKind::LightOn) {
+        return "I've switched on the kitchen lights, sir.";
+      }
+      return "ok";
+    }
+  };
+
+  intercom::FastPath ha(true, intercom::HomeConfig{}, std::make_shared<FakeHome>());
+  auto timed = ha.try_handle("set a timer for 5 minutes");
+  CHECK(timed.has_value());
+  if (timed) {
+    CHECK(contains(timed->reply, "five minutes"));
+    CHECK(timed->kind == "timer");
+  }
+  auto wx = ha.try_handle("what's the weather");
+  CHECK(wx.has_value());
+  if (wx) {
+    CHECK(contains(wx->reply, "cloudy"));
+    CHECK(wx->kind == "weather");
+  }
+  CHECK(!ha.try_handle("what's the weather in Tokyo").has_value());
+  auto lights = ha.try_handle("turn on the kitchen lights");
+  CHECK(lights.has_value());
+  if (lights) CHECK(lights->kind == "light_on");
 
   const std::string rule = intercom::local_clock_rule();
   CHECK(contains(rule, "CURRENT LOCAL DATETIME:"));

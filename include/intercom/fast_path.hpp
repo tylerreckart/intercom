@@ -1,5 +1,9 @@
 #pragma once
 
+#include "intercom/home.hpp"
+#include "intercom/home_client.hpp"
+
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -8,6 +12,7 @@ namespace intercom {
 
 struct FastPathResult {
   std::string reply;
+  std::string kind = "social";
 };
 
 // Social greetings, thanks, and presence checks — not a reason to "look something up".
@@ -20,12 +25,15 @@ bool withholds_fillers(std::string_view transcript);
 class FastPath {
  public:
   explicit FastPath(bool enabled);
+  FastPath(bool enabled, HomeConfig home, std::shared_ptr<HomeClient> home_client);
 
   // Returns a local reply when the utterance should skip Arbiter.
   std::optional<FastPathResult> try_handle(const std::string& transcript) const;
 
  private:
-  bool enabled_;
+  bool enabled_ = false;
+  HomeConfig home_;
+  std::shared_ptr<HomeClient> home_client_;
 };
 
 }  // namespace intercom

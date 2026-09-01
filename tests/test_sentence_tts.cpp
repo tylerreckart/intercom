@@ -4,6 +4,7 @@
 #include "intercom/stt.hpp"
 #include "intercom/tts.hpp"
 #include "intercom/turn_pipeline.hpp"
+#include "intercom/warm.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -304,6 +305,48 @@ int main() {
   }
   const auto cached = intercom::FillerClient::cached_ack_phrases();
   CHECK(cached.size() >= local.size());
+
+  {
+    auto tts_off = std::make_shared<RecordingTts>();
+    auto arbiter_off = std::make_shared<StreamingArbiter>(tts_off);
+    auto stt_off = std::make_shared<DummyStt>();
+    const auto db_off = std::filesystem::temp_directory_path() / "intercom_warm_off.db";
+    std::filesystem::remove(db_off);
+    auto sessions_off = std::make_shared<intercom::SessionStore>(db_off.string());
+    CHECK(sessions_off->open(&err));
+    intercom::Config cfg_off;
+    cfg_off.fast_path = false;
+    cfg_off.filler.enabled = false;
+    cfg_off.warm_prefix = false;
+    cfg_off.devices["speaker-1"] = "tok";
+    intercom::TurnPipeline pipe_off(cfg_off, stt_off, tts_off, arbiter_off, sessions_off,
+                                    nullptr);
+    pipe_off.warm_prefix();
+    CHECK(arbiter_off->last_message.empty());
+    std::filesystem::remove(db_off);
+  }
+
+  {
+    auto tts_w = std::make_shared<RecordingTts>();
+    auto arbiter_w = std::make_shared<StreamingArbiter>(tts_w);
+    auto stt_w = std::make_shared<DummyStt>();
+    const auto db_w = std::filesystem::temp_directory_path() / "intercom_warm.db";
+    std::filesystem::remove(db_w);
+    auto sessions_w = std::make_shared<intercom::SessionStore>(db_w.string());
+    CHECK(sessions_w->open(&err));
+    intercom::Config cfg_w;
+    cfg_w.fast_path = false;
+    cfg_w.filler.enabled = false;
+    cfg_w.warm_prefix = true;
+    cfg_w.devices["speaker-1"] = "tok";
+    intercom::TurnPipeline pipe_w(cfg_w, stt_w, tts_w, arbiter_w, sessions_w, nullptr);
+    pipe_w.warm_prefix();
+    CHECK(arbiter_w->last_message == intercom::kPrefixWarmMessage);
+    auto sess = sessions_w->get("speaker-1");
+    CHECK(sess.has_value());
+    if (sess) CHECK(sess->conversation_id == 42);
+    std::filesystem::remove(db_w);
+  }
 
   if (g_fails != 0) {
     std::cerr << g_fails << " failure(s)\n";

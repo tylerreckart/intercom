@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,6 +35,7 @@ struct TurnResult {
   bool ok = false;
   std::string error;
   bool used_fast_path = false;
+  std::string fast_path_kind;
 };
 
 struct TurnHandle {
@@ -71,6 +73,10 @@ class TurnPipeline {
   bool cancel_turn(const std::string& turn_id, std::string* err);
 
   std::optional<DeviceSession> session_for(const std::string& device_id) const;
+
+  // Create per-device conversations and send PREFIX WARM so a local model
+  // caches Arthur's constitution before the first PTT. Best-effort.
+  void warm_prefix();
 
   const Config& config() const { return config_; }
   SttProvider& stt() { return *stt_; }
