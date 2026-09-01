@@ -105,6 +105,8 @@ Config Config::load(const std::string& path) {
   c.sample_rate = require_int(j, "sample_rate", c.sample_rate);
   c.channels = require_int(j, "channels", c.channels);
   c.fast_path = require_bool(j, "fast_path", c.fast_path);
+  c.ws_listen_port = require_int(j, "ws_listen_port", c.ws_listen_port);
+  c.early_flush_words = require_int(j, "early_flush_words", c.early_flush_words);
 
   if (j.contains("devices") && j["devices"].is_object()) {
     for (auto it = j["devices"].begin(); it != j["devices"].end(); ++it) {
@@ -171,6 +173,7 @@ Config Config::load(const std::string& path) {
     c.filler.api_key = require_string(f, "api_key", c.filler.api_key);
     c.filler.model = require_string(f, "model", c.filler.model);
     c.filler.instant_ack_ms = require_int(f, "instant_ack_ms", c.filler.instant_ack_ms);
+    c.filler.tool_ack_ms = require_int(f, "tool_ack_ms", c.filler.tool_ack_ms);
     c.filler.min_silence_ms = require_int(f, "min_silence_ms", c.filler.min_silence_ms);
     c.filler.followup_silence_ms =
         require_int(f, "followup_silence_ms", c.filler.followup_silence_ms);

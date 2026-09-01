@@ -51,20 +51,10 @@ std::size_t non_space_count(std::string_view s) {
   return n;
 }
 
-std::string natural_tool_ack(std::string_view tool) {
-  if (tool.find("search") != std::string_view::npos ||
-      tool.find("fetch") != std::string_view::npos ||
-      tool.find("browse") != std::string_view::npos) {
-    return "I'll have a look.";
-  }
-  if (tool.find("schedule") != std::string_view::npos) {
-    return "One moment, sir.";
-  }
-  if (tool.find("read") != std::string_view::npos ||
-      tool.find("list") != std::string_view::npos) {
-    return "Let me check.";
-  }
-  return "Just a moment.";
+std::size_t early_flush_words(const Config& config) {
+  return config.early_flush_words > 0
+             ? static_cast<std::size_t>(config.early_flush_words)
+             : 0;
 }
 
 }  // namespace
@@ -344,17 +334,18 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
   auto sentence_ready = [&]() -> bool {
     std::lock_guard<std::mutex> lk(arb_state.speak_mu);
     std::string copy = arb_state.speak_buf;
-    return !flush_sentences(copy, false).empty();
+    return !flush_sentences(copy, false, early_flush_words(config_)).empty();
   };
 
-  // Drain completed sentences from speak_buf and synthesize each one.
+  // Drain completed sentences (and ~N-word prefixes) from speak_buf.
   // Spoken sentences are not re-spoken on done: final_flush only emits the
   // leftover tail, and full_content is a fallback when nothing was spoken.
   auto drain_and_speak = [&](bool final_flush) -> bool {
     std::vector<std::string> sentences;
     {
       std::lock_guard<std::mutex> lk(arb_state.speak_mu);
-      sentences = flush_sentences(arb_state.speak_buf, final_flush);
+      sentences = flush_sentences(arb_state.speak_buf, final_flush,
+                                  early_flush_words(config_));
     }
     for (const auto& raw : coalesce_speech_sentences(sentences)) {
       if (handle->cancel.load()) return false;
@@ -398,33 +389,44 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       }
     }
 
-    const bool hold_fillers =
-        arb_state.got_first_delta.load() || arb_state.started_answer.load() ||
-        !arb_state.saw_tool.load();
+    const bool hold_local_ack =
+        arb_state.got_first_delta.load() || arb_state.started_answer.load();
+    const bool hold_llm_fillers =
+        hold_local_ack || !arb_state.saw_tool.load();
 
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                 std::chrono::steady_clock::now() - turn_start)
                                 .count();
 
     const int tool_started_ms = arb_state.tool_started_ms.load();
-    const int ack_delay_ms = std::max(1600, config_.filler.instant_ack_ms);
-    if (!hold_fillers && filler_enabled && tool_started_ms >= 0 &&
-        !instant_spoken && spoken_filler.empty() &&
-        elapsed_ms - tool_started_ms >= ack_delay_ms) {
+    if (filler_enabled && !hold_local_ack && !instant_spoken && spoken_filler.empty() &&
+        tool_started_ms >= 0 &&
+        elapsed_ms - tool_started_ms >= std::max(0, config_.filler.tool_ack_ms)) {
       instant_spoken = true;
       std::string tool_name;
       {
         std::lock_guard<std::mutex> lk(arb_state.speak_mu);
         tool_name = arb_state.tool_name;
       }
-      if (!maybe_speak_filler(natural_tool_ack(tool_name), true)) {
+      if (!maybe_speak_filler(FillerClient::tool_ack(tool_name), true)) {
         result.error = err.empty() ? "tts failed" : err;
         handle->cancel.store(true);
         break;
       }
     }
 
-    if (!hold_fillers && filler_enabled && !contextual_spoken &&
+    if (filler_enabled && !hold_local_ack && !instant_spoken && spoken_filler.empty() &&
+        config_.filler.instant_ack_ms > 0 &&
+        elapsed_ms >= config_.filler.instant_ack_ms) {
+      instant_spoken = true;
+      if (!maybe_speak_filler(FillerClient::instant_ack(), true)) {
+        result.error = err.empty() ? "tts failed" : err;
+        handle->cancel.store(true);
+        break;
+      }
+    }
+
+    if (!hold_llm_fillers && filler_enabled && !contextual_spoken &&
         !instant_spoken && initial_filler_future.valid() &&
         elapsed_ms >= config_.filler.min_silence_ms &&
         initial_filler_future.wait_for(std::chrono::milliseconds(0)) ==
@@ -437,7 +439,7 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       }
     }
 
-    if (!hold_fillers && filler_enabled && !arb_state.saw_tool.load() && next_followup_at &&
+    if (!hold_llm_fillers && filler_enabled && !arb_state.saw_tool.load() && next_followup_at &&
         followups_spoken < config_.filler.max_followups &&
         std::chrono::steady_clock::now() >= *next_followup_at) {
       next_followup_at.reset();
@@ -450,7 +452,7 @@ TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,
       }
     }
 
-    if (!hold_fillers && followup_future.valid() &&
+    if (!hold_llm_fillers && followup_future.valid() &&
         followup_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
       ++followups_spoken;
       const std::string followup = followup_future.get();

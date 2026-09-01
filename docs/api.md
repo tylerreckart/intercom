@@ -96,13 +96,42 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 
 Default agent: **Arthur** (`config/arthur.agent.json`).
 
-Reply PCM can start before the SSE `done` event: Intercom synthesizes each completed sentence as depth-0 text deltas arrive (Kokoro latency per sentence, not full-turn latency). Remaining text is flushed after `done`; already-spoken sentences are not repeated.
+Reply PCM can start before the SSE `done` event. Intercom synthesizes each
+completed sentence as depth-0 text deltas arrive, and also starts Kokoro after
+about seven words (`early_flush_words`) even when the first sentence has no
+period yet. Remaining text is flushed after `done`; already-spoken sentences
+are not repeated.
 
 Related short sentences received together are synthesized as one phrase so
 prosody carries across them. PCM is faded once at the bridge and followed by
-punctuation-aware pauses (short after commas, longer after questions). Fillers
-wait for an actual tool call to remain active before speaking and use a short
-tool-appropriate acknowledgement.
+punctuation-aware pauses (short after commas, longer after questions). A cached
+local ack (`Right, let's see.`, …) can play after `filler.instant_ack_ms` if
+Arbiter has not started answering. A tool call speaks a matching cached ack
+after `filler.tool_ack_ms` (default 250 ms) when nothing has been said yet.
+
+## `WS /v1/stream`
+
+Duplex on `ws_listen_port` (default `8093`). HTTP PTT is unchanged.
+
+Handshake: `GET /v1/stream` with `Upgrade: websocket`, `Authorization: Bearer
+<device_token>`, and `X-Device-Id` (or `?token=&device_id=`).
+
+| Client | Meaning |
+|--------|---------|
+| binary frames | PCM s16le appended while PTT is held |
+| `{"type":"end"}` | Run STT on the buffered PCM and speak the reply |
+| `{"type":"text","text":"…"}` | Skip STT |
+| `{"type":"cancel"}` | Cancel the current turn if one is active |
+
+| Server | Meaning |
+|--------|---------|
+| `{"type":"ready","sample_rate"}` | After upgrade |
+| binary frames | Reply PCM |
+| `{"type":"turn",…}` | Transcript / turn id after the pipeline returns |
+| `{"type":"done","ok","error"}` | Terminal |
+
+STT is still one-shot at `end` (Whisper is not streaming). The gain is sending
+mic bytes while the button is down instead of waiting for HTTP to open.
 
 At 24 kHz, Intercom uses Kokoro's chunked raw-PCM endpoint and forwards each
 native phoneme batch as soon as it is generated. Older external Kokoro servers,

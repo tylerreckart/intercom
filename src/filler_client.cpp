@@ -165,6 +165,22 @@ std::string FillerClient::instant_ack() {
   return phrases[i];
 }
 
+std::string FillerClient::tool_ack(std::string_view tool) {
+  if (tool.find("search") != std::string_view::npos ||
+      tool.find("fetch") != std::string_view::npos ||
+      tool.find("browse") != std::string_view::npos) {
+    return "I'll have a look.";
+  }
+  if (tool.find("schedule") != std::string_view::npos) {
+    return "One moment.";
+  }
+  if (tool.find("read") != std::string_view::npos ||
+      tool.find("list") != std::string_view::npos) {
+    return "Let me check.";
+  }
+  return "Just a tick.";
+}
+
 std::string FillerClient::generate(const std::string& transcript,
                                    FillerStage stage,
                                    const std::string& previous_phrase,

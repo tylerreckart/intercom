@@ -28,6 +28,9 @@ FetchContent_MakeAvailable(httplib)
 find_package(OpenSSL REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
+if(TARGET SQLite::SQLite3 AND NOT TARGET SQLite3::SQLite3)
+  add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
 
 add_executable(intercom
   src/main.cpp
@@ -43,6 +46,7 @@ add_executable(intercom
   src/clock.cpp
   src/turn_pipeline.cpp
   src/http_server.cpp
+  src/ws.cpp
   src/util.cpp
   src/speakable.cpp
   src/managed_server.cpp
@@ -145,4 +149,31 @@ if(APPLE)
   target_compile_definitions(test_sentence_tts PRIVATE CPPHTTPLIB_USE_POLL)
 endif()
 add_test(NAME test_sentence_tts COMMAND test_sentence_tts)
+
+add_executable(test_ws_stream
+  tests/test_ws_stream.cpp
+  src/ws.cpp
+  src/config.cpp
+  src/turn_pipeline.cpp
+  src/speakable.cpp
+  src/util.cpp
+  src/session_store.cpp
+  src/fast_path.cpp
+  src/clock.cpp
+  src/arbiter_client.cpp
+  src/filler_client.cpp
+)
+target_include_directories(test_ws_stream PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(test_ws_stream PRIVATE
+  nlohmann_json::nlohmann_json
+  httplib::httplib
+  SQLite3::SQLite3
+  Threads::Threads
+)
+if(APPLE)
+  target_compile_definitions(test_ws_stream PRIVATE CPPHTTPLIB_USE_POLL)
+endif()
+add_test(NAME test_ws_stream COMMAND test_ws_stream)
 
