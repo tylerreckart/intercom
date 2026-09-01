@@ -55,7 +55,7 @@ target_include_directories(intercom PRIVATE
 target_link_libraries(intercom PRIVATE
   nlohmann_json::nlohmann_json
   httplib::httplib
-  SQLite3::SQLite3
+  SQLite::SQLite3
   Threads::Threads
 )
 
@@ -138,7 +138,7 @@ target_include_directories(test_sentence_tts PRIVATE
 target_link_libraries(test_sentence_tts PRIVATE
   nlohmann_json::nlohmann_json
   httplib::httplib
-  SQLite3::SQLite3
+  SQLite::SQLite3
   Threads::Threads
 )
 if(APPLE)
