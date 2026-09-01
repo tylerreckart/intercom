@@ -1,5 +1,7 @@
 #pragma once
 
+#include "intercom/home.hpp"
+
 #include <string>
 #include <unordered_map>
 
@@ -77,6 +79,8 @@ struct Config {
   int sample_rate = 16000;
   int channels = 1;
   bool fast_path = true;
+  bool warm_prefix = true;
+  HomeConfig home;
   WhisperConfig whisper;
   KokoroConfig kokoro;
   FillerConfig filler;

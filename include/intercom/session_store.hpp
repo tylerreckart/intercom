@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 struct sqlite3;
 
@@ -26,6 +27,7 @@ class SessionStore {
   bool open(std::string* err);
 
   std::optional<DeviceSession> get(const std::string& device_id) const;
+  std::vector<DeviceSession> list() const;
   bool upsert(const DeviceSession& session, std::string* err);
 
  private:

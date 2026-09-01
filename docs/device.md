@@ -17,6 +17,7 @@ Content-Type: `audio/L16; rate=24000; channels=1`
 2. Use the Intercom device bearer (not Arbiter’s token).
 3. Intercom maps device → Arbiter `conversation_id` in SQLite (`session_db`).
 4. Same device keeps memory/history across boots of the MCU.
+5. On Intercom start, `warm_prefix` (default on) creates those conversations if needed and sends `PREFIX WARM` so the LLM KV cache is hot before the first PTT.
 
 ## Push-to-talk flow
 

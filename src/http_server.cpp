@@ -79,6 +79,9 @@ void set_turn_headers(httplib::Response& res, const TurnResult& result,
   }
   if (result.used_fast_path) {
     res.set_header("X-Fast-Path", "1");
+    if (!result.fast_path_kind.empty()) {
+      res.set_header("X-Fast-Path-Kind", result.fast_path_kind);
+    }
   }
 }
 

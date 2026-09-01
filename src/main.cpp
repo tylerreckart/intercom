@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
   }
   auto pipeline = std::make_shared<intercom::TurnPipeline>(
       config, stt, tts, arbiter, sessions, filler);
+  pipeline->warm_prefix();
 
   intercom::ServerDeps deps;
   deps.config = config;
