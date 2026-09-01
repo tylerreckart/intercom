@@ -28,9 +28,10 @@ SpeechDelivery classify_speech_delivery(std::string_view text) {
     return SpeechDelivery::Firm;
   }
 
-  if (contains_any(lower, {"just a moment", "one moment", "let me check",
-                           "i'll have a look", "still looking",
-                           "hang on"})) {
+  if (contains_any(lower, {"just a moment", "just a tick", "one moment",
+                           "let me check", "i'll have a look", "still looking",
+                           "hang on", "leave it with me", "with you shortly",
+                           "give me a second", "nearly there"})) {
     return SpeechDelivery::Subdued;
   }
 

@@ -9,7 +9,7 @@ ESP32  --HTTP PTT PCM-->  Intercom  --text/SSE-->  arbiter --api
 ESP32  <--chunked PCM---  Intercom  <--text------/
 ```
 
-Intercom keeps Whisper and Kokoro loaded in local HTTP servers (`whisper-server` on `:8092`, `scripts/kokoro_server.py` on `:8091`) so each turn does not reload ONNX/ggml. Instant-ack phrases (`Right, let's see.`, `Just a tick.`, …) are synthesized once at startup and replayed from PCM cache — including a local ack after `filler.instant_ack_ms` and an earlier tool ack after `filler.tool_ack_ms`. Spoken replies can start after about seven words (`early_flush_words`), not only at a period. Optional WebSocket duplex is `ws://<host>:8093/v1/stream`. Each turn logs a single `intercom latency …` line (`stt_ms`, `arbiter_ttft_ms`, `kokoro_ms`, `ttfa_ms`).
+Intercom keeps Whisper and Kokoro loaded in local HTTP servers (`whisper-server` on `:8092`, `scripts/kokoro_server.py` on `:8091`) so each turn does not reload ONNX/ggml. Instant-ack phrases (`Just a tick.`, `One moment.`, …) are synthesized once at startup and replayed from PCM cache — including a local ack after `filler.instant_ack_ms` and an earlier tool ack after `filler.tool_ack_ms`. Spoken replies can start after about seven words (`early_flush_words`), not only at a period. Optional WebSocket duplex is `ws://<host>:8093/v1/stream`. Each turn logs a single `intercom latency …` line (`stt_ms`, `arbiter_ttft_ms`, `kokoro_ms`, `ttfa_ms`).
 
 Colocate Intercom on the same host as `arbiter --api` (default `http://127.0.0.1:8080`). Device tokens never see the Arbiter bearer.
 

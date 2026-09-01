@@ -4,6 +4,7 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <memory>
 #include <optional>
@@ -100,12 +101,14 @@ std::string cap_words(std::string s, std::size_t max_words) {
 std::string build_system_prompt(FillerStage stage) {
   if (stage == FillerStage::FollowUp) {
     return "Arthur, a British voice on a home intercom. The user is still waiting. "
-           "One quiet aside, 2-4 words, like 'still looking' or 'one moment'. "
-           "Not a status report. Output only the phrase.";
+           "One quiet aside, 2-4 words, like 'one moment' or 'hang on'. "
+           "Not a status report. Do not say you are looking or thinking. "
+           "Output only the phrase.";
   }
   return "Arthur, a British voice on a home intercom. The user just asked something. "
-         "One short aside, 3-5 words, like 'right, let's see' or 'I'll have a look'. "
-         "Do not narrate that you are thinking or working. Output only the phrase.";
+         "One short aside, 2-4 words, like 'just a tick' or 'one moment'. "
+         "Do not narrate that you are thinking, looking, or working. "
+         "Output only the phrase.";
 }
 
 std::string build_user_prompt(const std::string& transcript,
@@ -120,15 +123,15 @@ std::string build_user_prompt(const std::string& transcript,
 
 std::string fallback_phrase(FillerStage stage) {
   static const char* kInitial[] = {
-      "Right, let's see.",
-      "I'll have a look.",
       "Just a tick.",
-      "Let me check.",
-  };
-  static const char* kFollowUp[] = {
-      "Still looking.",
       "One moment.",
       "Hang on.",
+      "Leave it with me.",
+  };
+  static const char* kFollowUp[] = {
+      "One moment.",
+      "Hang on.",
+      "Nearly there.",
   };
   static thread_local std::mt19937 rng{std::random_device{}()};
   if (stage == FillerStage::FollowUp) {
@@ -145,13 +148,23 @@ FillerClient::FillerClient(FillerConfig config) : config_(std::move(config)) {}
 
 std::vector<std::string> FillerClient::instant_ack_phrases() {
   return {
-      "Right, let's see.",
-      "I'll have a look.",
       "Just a tick.",
-      "Leave it with me.",
-      "Let me check.",
       "One moment.",
+      "Hang on.",
+      "Leave it with me.",
+      "With you shortly.",
   };
+}
+
+std::vector<std::string> FillerClient::cached_ack_phrases() {
+  auto out = instant_ack_phrases();
+  for (const char* tool : {"search", "read", "schedule", "exec"}) {
+    const std::string phrase = tool_ack(tool);
+    if (std::find(out.begin(), out.end(), phrase) == out.end()) {
+      out.push_back(phrase);
+    }
+  }
+  return out;
 }
 
 std::string FillerClient::instant_ack() {

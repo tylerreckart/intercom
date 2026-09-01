@@ -293,6 +293,17 @@ int main() {
   CHECK(intercom::FillerClient::tool_ack("mem_read") == "Let me check.");
   CHECK(intercom::FillerClient::tool_ack("exec") == "Just a tick.");
 
+  const auto local = intercom::FillerClient::instant_ack_phrases();
+  CHECK(!local.empty());
+  for (const auto& p : local) {
+    CHECK(p.find("see") == std::string::npos);
+    CHECK(p.find("look") == std::string::npos);
+    CHECK(p.find("check") == std::string::npos);
+    CHECK(p.find("think") == std::string::npos);
+  }
+  const auto cached = intercom::FillerClient::cached_ack_phrases();
+  CHECK(cached.size() >= local.size());
+
   if (g_fails != 0) {
     std::cerr << g_fails << " failure(s)\n";
     return 1;

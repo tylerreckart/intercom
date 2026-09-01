@@ -219,7 +219,7 @@ bool KokoroTts::ready(std::string* detail) const {
 
 void KokoroTts::warmup() {
   std::string err;
-  for (const auto& phrase : FillerClient::instant_ack_phrases()) {
+  for (const auto& phrase : FillerClient::cached_ack_phrases()) {
     pending_delivery_ = classify_speech_delivery(phrase);
     pending_speed_ = std::clamp(
         cfg_.speed * delivery_speed_multiplier(pending_delivery_), 0.5, 2.0);
