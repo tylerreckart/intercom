@@ -45,6 +45,8 @@ Body: raw mono PCM **s16le** (default 24 kHz).
 | `X-Transcript` | STT text |
 | `X-Device-Id` | Echo |
 | `X-Conversation-Id` | Present when a prior session exists |
+| `X-Fast-Path` | `1` when the turn skipped Arbiter |
+| `X-Fast-Path-Kind` | `social`, `clock`, `echo`, `timer`, `light_on`, `light_off`, `light_toggle`, `volume_up`, `volume_down`, `weather`, or `alarm` |
 | `X-Intercom-Error` | Error detail when present |
 
 Errors before streaming are JSON (`401`, `400`, `502`).
@@ -70,7 +72,14 @@ Same as utterance but skips STT — for bring-your-own transcript / bridge tests
 { "text": "what time is it" }
 ```
 
-Fast-path phrases (`hello` / `good morning` and other greetings, `status`, `what time…`, `echo …`) never call Arbiter. Social turns greet back and invite a follow-up.
+Fast-path phrases never call Arbiter:
+
+- Social: `hello` / `good morning` and other greetings, thanks, `status`
+- Clock: `what time is it`, `what's the date` (local clock, not tools)
+- Echo: `echo …`
+- Home (only when `home.ha_base_url` and `home.ha_token` are set): timers, lights, volume, weather at home, next alarm. Weather with a place (`in Tokyo`) still goes to Arthur. A timer with no duration answers `How long, sir?` even without Home Assistant.
+
+Social turns greet back and invite a follow-up. Home intents that match but have no Home Assistant config fall through to Arthur (except the bare timer prompt).
 
 ## `POST /v1/turns/:turn_id/cancel`
 
@@ -87,6 +96,7 @@ Debug: `{ device_id, conversation_id, last_turn_id, updated_at }`.
 | Intercom | Arbiter |
 |--------|---------|
 | First utterance per device | `POST /v1/conversations` (`agent_id` + `agent_def` from config) |
+| Boot (`warm_prefix`) | Same create, then a silent `PREFIX WARM` message so a local model can cache Arthur's constitution. Arthur replies `Ready`. |
 | Each turn | `POST /v1/conversations/:id/messages` + SSE |
 | `message` | STT transcript only (no voice-intercom suffix) |
 | body | `{ "message", "channel": "voice", "agent_def" }` — `agent_def` includes a fresh local date/time rule each turn |

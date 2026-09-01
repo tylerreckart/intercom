@@ -341,6 +341,48 @@ std::string trim(std::string_view s) {
   return std::string(s);
 }
 
+std::string fold_phatic(std::string_view raw) {
+  std::string t = to_lower(trim(raw));
+  std::string out;
+  out.reserve(t.size());
+  for (char c : t) {
+    if (c == '.' || c == '!' || c == '?' || c == ',' || c == ';' || c == ':') {
+      out.push_back(' ');
+    } else if (c == '\'') {
+      continue;
+    } else {
+      out.push_back(c);
+    }
+  }
+  out = trim(out);
+  std::vector<std::string> tok;
+  std::string cur;
+  for (char c : out) {
+    if (c == ' ' || c == '\t') {
+      if (!cur.empty()) {
+        tok.push_back(cur);
+        cur.clear();
+      }
+    } else {
+      cur.push_back(c);
+    }
+  }
+  if (!cur.empty()) tok.push_back(cur);
+
+  auto drop = [](const std::string& w) {
+    return w == "arthur" || w == "please" || w == "sir";
+  };
+  while (!tok.empty() && drop(tok.front())) tok.erase(tok.begin());
+  while (!tok.empty() && drop(tok.back())) tok.pop_back();
+
+  std::string joined;
+  for (const auto& w : tok) {
+    if (!joined.empty()) joined.push_back(' ');
+    joined += w;
+  }
+  return joined;
+}
+
 std::vector<std::string> flush_sentences(std::string& buf, bool final_flush) {
   std::vector<std::string> out;
   std::size_t start = 0;

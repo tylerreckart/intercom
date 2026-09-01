@@ -2,57 +2,13 @@
 #include "intercom/clock.hpp"
 #include "intercom/util.hpp"
 
+#include <iostream>
 #include <random>
 #include <string_view>
 #include <vector>
 
 namespace intercom {
 namespace {
-
-bool is_punct(char c) {
-  return c == '.' || c == '!' || c == '?' || c == ',' || c == ';' || c == ':';
-}
-
-std::string fold_phatic(std::string_view raw) {
-  std::string t = to_lower(trim(raw));
-  std::string out;
-  out.reserve(t.size());
-  for (char c : t) {
-    if (is_punct(c) || c == '\'') {
-      if (c == '\'') continue;
-      out.push_back(' ');
-    } else {
-      out.push_back(c);
-    }
-  }
-  out = trim(out);
-  std::vector<std::string> tok;
-  std::string cur;
-  for (char c : out) {
-    if (c == ' ' || c == '\t') {
-      if (!cur.empty()) {
-        tok.push_back(cur);
-        cur.clear();
-      }
-    } else {
-      cur.push_back(c);
-    }
-  }
-  if (!cur.empty()) tok.push_back(cur);
-
-  auto drop = [](const std::string& w) {
-    return w == "arthur" || w == "please" || w == "sir";
-  };
-  while (!tok.empty() && drop(tok.front())) tok.erase(tok.begin());
-  while (!tok.empty() && drop(tok.back())) tok.pop_back();
-
-  std::string joined;
-  for (const auto& w : tok) {
-    if (!joined.empty()) joined.push_back(' ');
-    joined += w;
-  }
-  return joined;
-}
 
 bool eq(std::string_view a, std::initializer_list<const char*> opts) {
   for (const char* o : opts) {
@@ -124,10 +80,14 @@ bool is_clock_query(std::string_view transcript) {
 }
 
 bool withholds_fillers(std::string_view transcript) {
-  return is_social_turn(transcript) || is_clock_query(transcript);
+  return is_social_turn(transcript) || is_clock_query(transcript) ||
+         parse_home_intent(transcript).has_value();
 }
 
 FastPath::FastPath(bool enabled) : enabled_(enabled) {}
+
+FastPath::FastPath(bool enabled, HomeConfig home, std::shared_ptr<HomeClient> home_client)
+    : enabled_(enabled), home_(std::move(home)), home_client_(std::move(home_client)) {}
 
 std::optional<FastPathResult> FastPath::try_handle(const std::string& transcript) const {
   if (!enabled_) return std::nullopt;
@@ -135,58 +95,79 @@ std::optional<FastPathResult> FastPath::try_handle(const std::string& transcript
   if (raw.empty()) return std::nullopt;
 
   if (raw.rfind("echo ", 0) == 0) {
-    return FastPathResult{trim(transcript.substr(5))};
+    return FastPathResult{trim(transcript.substr(5)), "echo"};
   }
 
   if (is_clock_query(transcript)) {
     const std::string t = fold_phatic(transcript);
     if (t.find("date") != std::string::npos || t.find("day") != std::string::npos ||
         t.find("today") != std::string::npos) {
-      return FastPathResult{spoken_date_now()};
+      return FastPathResult{spoken_date_now(), "clock"};
     }
-    return FastPathResult{spoken_time_now()};
+    return FastPathResult{spoken_time_now(), "clock"};
   }
 
   const std::string t = fold_phatic(transcript);
   if (t.empty()) {
-    return FastPathResult{hello_by_hour()};
+    return FastPathResult{hello_by_hour(), "social"};
   }
 
   if (eq(t, {"good morning", "morning"})) {
     return FastPathResult{pick({"Good morning, sir. What can I do for you?",
                                 "Morning, sir. How can I help?",
-                                "Good morning, sir. What's on your mind?"})};
+                                "Good morning, sir. What's on your mind?"}),
+                          "social"};
   }
   if (eq(t, {"good afternoon", "afternoon"})) {
     return FastPathResult{pick({"Good afternoon, sir. What can I do for you?",
-                                "Afternoon, sir. How can I help?"})};
+                                "Afternoon, sir. How can I help?"}),
+                          "social"};
   }
   if (eq(t, {"good evening", "evening"})) {
     return FastPathResult{pick({"Good evening, sir. What can I do for you?",
-                                "Evening, sir. How can I help?"})};
+                                "Evening, sir. How can I help?"}),
+                          "social"};
   }
   if (eq(t, {"good night", "goodnight"})) {
-    return FastPathResult{pick({"Good night, sir.", "Sleep well, sir."})};
+    return FastPathResult{pick({"Good night, sir.", "Sleep well, sir."}), "social"};
   }
   if (eq(t, {"goodbye", "bye", "see you", "farewell"})) {
-    return FastPathResult{pick({"Goodbye, sir.", "Until later, sir."})};
+    return FastPathResult{pick({"Goodbye, sir.", "Until later, sir."}), "social"};
   }
   if (eq(t, {"hello", "hi", "hey", "ping", "hello there", "hi there", "hey there"})) {
-    return FastPathResult{hello_by_hour()};
+    return FastPathResult{hello_by_hour(), "social"};
   }
   if (eq(t, {"how are you", "how are you doing", "hows it going", "how is it going",
              "you alright", "you all right"})) {
     return FastPathResult{pick({"Very well, sir, thank you. What can I do for you?",
                                 "I'm well, sir. How can I help?",
-                                "All good, sir. What do you need?"})};
+                                "All good, sir. What do you need?"}),
+                          "social"};
   }
   if (eq(t, {"thanks", "thank you", "cheers", "ta"})) {
     return FastPathResult{pick({"You're welcome, sir. Anything else?",
-                                "Glad to, sir. What else can I do?"})};
+                                "Glad to, sir. What else can I do?"}),
+                          "social"};
   }
   if (eq(t, {"status", "are you there", "you there", "you around"})) {
     return FastPathResult{pick({"Right here, sir. What do you need?",
-                                "I'm here, sir. How can I help?"})};
+                                "I'm here, sir. How can I help?"}),
+                          "social"};
+  }
+
+  if (auto intent = parse_home_intent(transcript)) {
+    if (intent->kind == HomeIntentKind::Timer && intent->timer_seconds <= 0) {
+      return FastPathResult{"How long, sir?", home_intent_kind_name(intent->kind)};
+    }
+    const bool ha_ready = home_client_ && home_client_->configured();
+    if (!ha_ready) return std::nullopt;
+    std::string err;
+    std::string reply = home_client_->run(*intent, &err);
+    if (reply.empty()) {
+      std::cerr << "intercom home: " << (err.empty() ? "failed" : err) << std::endl;
+      return FastPathResult{"I couldn't do that, sir.", home_intent_kind_name(intent->kind)};
+    }
+    return FastPathResult{std::move(reply), home_intent_kind_name(intent->kind)};
   }
 
   return std::nullopt;

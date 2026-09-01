@@ -11,6 +11,21 @@
   "sample_rate": 24000,
   "channels": 1,
   "fast_path": true,
+  "warm_prefix": true,
+  "home": {
+    "ha_base_url": "",
+    "ha_token": "",
+    "timeout_ms": 800,
+    "weather_entity": "weather.home",
+    "timer_entity": "",
+    "media_player": "",
+    "volume_step": 0.08,
+    "alarm_entity": "",
+    "lights": {
+      "kitchen": "light.kitchen",
+      "default": "light.living_room"
+    }
+  },
   "kokoro": {
     "binary": "~/.intercom/venv-kokoro/bin/kokoro-tts",
     "voice": "bm_lewis",

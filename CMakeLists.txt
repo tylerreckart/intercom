@@ -28,6 +28,9 @@ FetchContent_MakeAvailable(httplib)
 find_package(OpenSSL REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
+if(TARGET SQLite::SQLite3 AND NOT TARGET SQLite3::SQLite3)
+  add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
 
 add_executable(intercom
   src/main.cpp
@@ -40,6 +43,8 @@ add_executable(intercom
   src/filler_client.cpp
   src/session_store.cpp
   src/fast_path.cpp
+  src/home_intent.cpp
+  src/home_client.cpp
   src/clock.cpp
   src/turn_pipeline.cpp
   src/http_server.cpp
@@ -113,13 +118,33 @@ add_test(NAME test_speech_dsp COMMAND test_speech_dsp)
 add_executable(test_fast_path
   tests/test_fast_path.cpp
   src/fast_path.cpp
+  src/home_intent.cpp
+  src/home_client.cpp
   src/clock.cpp
   src/util.cpp
 )
 target_include_directories(test_fast_path PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+target_link_libraries(test_fast_path PRIVATE
+  nlohmann_json::nlohmann_json
+  httplib::httplib
+  Threads::Threads
+)
+if(APPLE)
+  target_compile_definitions(test_fast_path PRIVATE CPPHTTPLIB_USE_POLL)
+endif()
 add_test(NAME test_fast_path COMMAND test_fast_path)
+
+add_executable(test_home_intent
+  tests/test_home_intent.cpp
+  src/home_intent.cpp
+  src/util.cpp
+)
+target_include_directories(test_home_intent PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_test(NAME test_home_intent COMMAND test_home_intent)
 
 add_executable(test_sentence_tts
   tests/test_sentence_tts.cpp
@@ -128,6 +153,8 @@ add_executable(test_sentence_tts
   src/util.cpp
   src/session_store.cpp
   src/fast_path.cpp
+  src/home_intent.cpp
+  src/home_client.cpp
   src/clock.cpp
   src/arbiter_client.cpp
   src/filler_client.cpp
