@@ -85,7 +85,11 @@ int main() {
         intercom::SpeechDelivery::Subdued);
   CHECK(intercom::classify_speech_delivery("Just a tick.") ==
         intercom::SpeechDelivery::Subdued);
-  CHECK(intercom::classify_speech_delivery("With you shortly.") ==
+  CHECK(intercom::classify_speech_delivery("Yes, sir.") ==
+        intercom::SpeechDelivery::Subdued);
+  CHECK(intercom::classify_speech_delivery("Right.") ==
+        intercom::SpeechDelivery::Subdued);
+  CHECK(intercom::classify_speech_delivery("Of course.") ==
         intercom::SpeechDelivery::Subdued);
   CHECK(intercom::classify_speech_delivery(
             "Warning, sir. The front door is still open.") ==

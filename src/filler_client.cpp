@@ -101,13 +101,13 @@ std::string cap_words(std::string s, std::size_t max_words) {
 std::string build_system_prompt(FillerStage stage) {
   if (stage == FillerStage::FollowUp) {
     return "Arthur, a British voice on a home intercom. The user is still waiting. "
-           "One quiet aside, 2-4 words, like 'one moment' or 'hang on'. "
-           "Not a status report. Do not say you are looking or thinking. "
+           "Acknowledge, 1-3 words, like 'yes' or 'still with you'. "
+           "Do not put them on hold. Do not say you are looking or thinking. "
            "Output only the phrase.";
   }
   return "Arthur, a British voice on a home intercom. The user just asked something. "
-         "One short aside, 2-4 words, like 'just a tick' or 'one moment'. "
-         "Do not narrate that you are thinking, looking, or working. "
+         "Acknowledge that you heard them, 1-3 words, like 'yes, sir' or 'of course'. "
+         "Do not put them on hold. Do not narrate thinking, looking, or working. "
          "Output only the phrase.";
 }
 
@@ -123,14 +123,14 @@ std::string build_user_prompt(const std::string& transcript,
 
 std::string fallback_phrase(FillerStage stage) {
   static const char* kInitial[] = {
-      "Just a tick.",
-      "One moment.",
-      "Hang on.",
-      "Leave it with me.",
+      "Yes, sir.",
+      "Right.",
+      "Of course.",
+      "Very good.",
   };
   static const char* kFollowUp[] = {
-      "One moment.",
-      "Hang on.",
+      "Yes.",
+      "Still with you.",
       "Nearly there.",
   };
   static thread_local std::mt19937 rng{std::random_device{}()};
@@ -148,11 +148,11 @@ FillerClient::FillerClient(FillerConfig config) : config_(std::move(config)) {}
 
 std::vector<std::string> FillerClient::instant_ack_phrases() {
   return {
-      "Just a tick.",
-      "One moment.",
-      "Hang on.",
-      "Leave it with me.",
-      "With you shortly.",
+      "Yes, sir.",
+      "Right.",
+      "Of course.",
+      "Very good.",
+      "Right away.",
   };
 }
 
@@ -182,16 +182,16 @@ std::string FillerClient::tool_ack(std::string_view tool) {
   if (tool.find("search") != std::string_view::npos ||
       tool.find("fetch") != std::string_view::npos ||
       tool.find("browse") != std::string_view::npos) {
-    return "I'll have a look.";
+    return "Of course.";
   }
   if (tool.find("schedule") != std::string_view::npos) {
-    return "One moment.";
+    return "Very good.";
   }
   if (tool.find("read") != std::string_view::npos ||
       tool.find("list") != std::string_view::npos) {
-    return "Let me check.";
+    return "Yes, sir.";
   }
-  return "Just a tick.";
+  return "Right.";
 }
 
 std::string FillerClient::generate(const std::string& transcript,

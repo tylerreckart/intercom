@@ -232,7 +232,7 @@ int main() {
     const auto texts_f = tts_f->snapshot();
     CHECK(texts_f.size() >= 2);
     if (texts_f.size() >= 2) {
-      CHECK(texts_f[0] == "I'll have a look.");
+      CHECK(texts_f[0] == "Of course.");
       CHECK(texts_f[1].find("Here you go") != std::string::npos);
     }
     std::filesystem::remove(db_f);
@@ -289,9 +289,9 @@ int main() {
     std::filesystem::remove(db_l);
   }
 
-  CHECK(intercom::FillerClient::tool_ack("web_search") == "I'll have a look.");
-  CHECK(intercom::FillerClient::tool_ack("mem_read") == "Let me check.");
-  CHECK(intercom::FillerClient::tool_ack("exec") == "Just a tick.");
+  CHECK(intercom::FillerClient::tool_ack("web_search") == "Of course.");
+  CHECK(intercom::FillerClient::tool_ack("mem_read") == "Yes, sir.");
+  CHECK(intercom::FillerClient::tool_ack("exec") == "Right.");
 
   const auto local = intercom::FillerClient::instant_ack_phrases();
   CHECK(!local.empty());
