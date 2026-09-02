@@ -6,8 +6,8 @@ Target hardware: **ESP32-S3 with PSRAM** (e.g. Arduino Nano ESP32) + I2S mic (IN
 
 | Direction | Format |
 |-----------|--------|
-| Mic → Intercom | Mono PCM s16le, **24 kHz**, push-to-talk HTTP body |
-| Intercom → speaker | Mono PCM s16le, **24 kHz**, chunked HTTP response |
+| Mic → Intercom | Mono PCM s16le, **24 kHz**, WebSocket binary frames while PTT is held (HTTP body is the fallback) |
+| Intercom → speaker | Mono PCM s16le, **24 kHz**, WebSocket binary frames (chunked HTTP response on fallback) |
 
 Content-Type: `audio/L16; rate=24000; channels=1`
 
@@ -21,11 +21,24 @@ Content-Type: `audio/L16; rate=24000; channels=1`
 
 ## Push-to-talk flow
 
-1. User holds button → record PCM into RAM/PSRAM.
-2. `POST /v1/utterance` with PCM body.
-3. Read response headers (`X-Turn-Id`, `X-Transcript`).
-4. Stream response body to I2S amp as chunks arrive.
-5. On barge-in: stop I2S playback and `POST /v1/turns/{X-Turn-Id}/cancel`.
+Firmware (`firmware/nano-esp32/intercom-endpoint`, tag `intercom-lan-v6`) streams
+while the button is down:
+
+1. On boot (and after drops), open `ws://<host>:8093/v1/stream` with the device
+   bearer and `X-Device-Id`. Keep the socket; ping every 20s while idle.
+2. User holds PTT → I2S capture into PSRAM **and** binary WS frames every
+   ~1024 samples (~43 ms at 24 kHz).
+3. On release, send `{"type":"end"}`. Intercom replies `{"type":"accept","turn_id"}`
+   immediately, then Whisper on the buffered clip, then reply PCM as binary
+   frames, then `turn` / `done`.
+4. Play binary frames to the I2S amp as they arrive.
+5. On barge-in: stop I2S, `{"type":"cancel"}` on the socket, and
+   `POST /v1/turns/{turn_id}/cancel`.
+6. If the WS handshake or a mid-hold send fails, fall back to
+   `POST /v1/utterance` with the full clip (same as before).
+
+Set `INTERCOM_WS_PORT` to `0` in `config.h` to force HTTP only. Serial `say` /
+`ping` stay on HTTP. Serial `ws` prints the socket state and reconnects.
 
 ## Colocation
 
@@ -55,13 +68,14 @@ ffplay -f s16le -ar 24000 -ac 1 reply.pcm
 ## WebSocket (v1.1)
 
 `ws://<host>:8093/v1/stream` (config `ws_listen_port`, `0` disables it).
+`INTERCOM_WS_PORT` on the MCU (default `8093`, `0` disables the client).
 
 1. Upgrade with the same device bearer and `X-Device-Id` as HTTP.
 2. While PTT is held, send binary frames of mono s16le PCM (24 kHz).
-3. On release, send `{"type":"end"}`. Intercom runs Whisper on the buffered
-   audio and streams reply PCM back as binary frames.
+3. On release, send `{"type":"end"}`. Intercom ACKs with `accept` + `turn_id`,
+   runs Whisper on the buffered audio, and streams reply PCM back as binary
+   frames.
 4. `{"type":"text","text":"status"}` skips STT (same as `/v1/utterance/text`).
-5. HTTP PTT on `:8090` remains the firmware default until the MCU grows a WS
-   client.
+5. HTTP PTT on `:8090` remains the fallback and the serial `say` path.
 
 See [docs/api.md](api.md) for the frame table.

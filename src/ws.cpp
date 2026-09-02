@@ -5,6 +5,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -333,6 +334,8 @@ void WsServer::accept_loop() {
     if (pr <= 0) continue;
     const int fd = ::accept(listen_fd_, nullptr, nullptr);
     if (fd < 0) continue;
+    int one = 1;
+    ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     std::thread([this, fd] { handle_client(fd); }).detach();
   }
 }
@@ -450,6 +453,7 @@ void WsServer::handle_client(int fd) {
           }
           const std::string turn_id = make_turn_id();
           active_turn = turn_id;
+          send_json(fd, {{"type", "accept"}, {"turn_id", turn_id}});
           result = deps_.pipeline->run_text_utterance(device_id, text, sink, turn_id, -1);
         } else {
           if (pcm.empty()) {
@@ -457,8 +461,9 @@ void WsServer::handle_client(int fd) {
             continue;
           }
           active_turn = make_turn_id();
+          send_json(fd, {{"type", "accept"}, {"turn_id", active_turn}});
           result = deps_.pipeline->run_utterance(device_id, pcm, deps_.config.sample_rate,
-                                                 deps_.config.channels, sink);
+                                                 deps_.config.channels, sink, active_turn);
           if (result.turn_id.empty()) result.turn_id = active_turn;
         }
         pcm.clear();

@@ -37,9 +37,11 @@ void expect(bool cond, const char* expr, const char* file, int line) {
 class DummyStt : public intercom::SttProvider {
  public:
   std::string transcribe(const std::vector<std::uint8_t>& pcm, int, int, std::string*) override {
+    last_pcm = pcm;
     return pcm.empty() ? std::string() : std::string("status");
   }
   bool ready(std::string*) const override { return true; }
+  std::vector<std::uint8_t> last_pcm;
 };
 
 class RecordingTts : public intercom::TtsProvider {
@@ -216,6 +218,9 @@ int main() {
         if (frame->opcode == intercom::WsOpcode::Text) {
           try {
             auto j = nlohmann::json::parse(frame->payload);
+            if (j.value("type", "") == "accept") {
+              CHECK(!j.value("turn_id", "").empty());
+            }
             if (j.value("type", "") == "done") {
               CHECK(j.value("ok", false));
               got_done = true;
@@ -230,11 +235,17 @@ int main() {
     CHECK(got_done);
     CHECK(tts->last.find("sir") != std::string::npos);
 
-    intercom::WsFrame pcm_f;
-    pcm_f.opcode = intercom::WsOpcode::Binary;
-    pcm_f.payload = std::string(8, 'A');
-    const std::string pcm_raw = intercom::encode_ws_frame(pcm_f, true);
-    CHECK(send_all(fd, pcm_raw.data(), pcm_raw.size()));
+    // Stream PCM in several binary frames while PTT is held, then end.
+    const std::string chunk_a(4, 'A');
+    const std::string chunk_b(6, 'B');
+    const std::string chunk_c(8, 'C');
+    for (const auto& chunk : {chunk_a, chunk_b, chunk_c}) {
+      intercom::WsFrame pcm_f;
+      pcm_f.opcode = intercom::WsOpcode::Binary;
+      pcm_f.payload = chunk;
+      const std::string pcm_raw = intercom::encode_ws_frame(pcm_f, true);
+      CHECK(send_all(fd, pcm_raw.data(), pcm_raw.size()));
+    }
     intercom::WsFrame end;
     end.opcode = intercom::WsOpcode::Text;
     end.payload = R"({"type":"end"})";
@@ -243,6 +254,9 @@ int main() {
 
     incoming.clear();
     got_done = false;
+    bool got_accept = false;
+    std::string accept_id;
+    std::string turn_id;
     const auto end_deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
     while (std::chrono::steady_clock::now() < end_deadline && !got_done) {
@@ -257,7 +271,13 @@ int main() {
         if (frame->opcode == intercom::WsOpcode::Text) {
           try {
             auto j = nlohmann::json::parse(frame->payload);
-            if (j.value("type", "") == "done") got_done = true;
+            const auto type = j.value("type", "");
+            if (type == "accept") {
+              got_accept = true;
+              accept_id = j.value("turn_id", "");
+            }
+            if (type == "turn") turn_id = j.value("turn_id", "");
+            if (type == "done") got_done = true;
           } catch (...) {
           }
         }
@@ -265,6 +285,11 @@ int main() {
       if (!got_done) std::this_thread::sleep_for(std::chrono::milliseconds(15));
     }
     CHECK(got_done);
+    CHECK(got_accept);
+    CHECK(!accept_id.empty());
+    CHECK(accept_id == turn_id);
+    CHECK(stt->last_pcm.size() == chunk_a.size() + chunk_b.size() + chunk_c.size());
+    CHECK(std::string(stt->last_pcm.begin(), stt->last_pcm.end()) == chunk_a + chunk_b + chunk_c);
     ::close(fd);
   }
 

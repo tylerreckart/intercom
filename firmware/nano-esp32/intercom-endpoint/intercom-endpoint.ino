@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <ctype.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
 #include <math.h>
@@ -8,8 +9,10 @@
 #include "driver/gpio.h"
 #include "soc/i2s_reg.h"
 #include "config.h"
+#include "ws_stream.h"
 
 enum class PlayResult { Done, BargeIn, Error };
+static PlayResult postUtterance(const int16_t *pcm, size_t samples);
 
 struct HttpHeaders {
   int status = 0;
@@ -22,8 +25,9 @@ struct HttpHeaders {
 };
 
 // Thin PCM endpoint for Intercom (docs/device.md):
-// hold PTT -> record 24 kHz s16le -> POST /v1/utterance -> play chunked PCM.
-// Serial (idle): tone | health | ping
+// hold PTT -> stream 24 kHz s16le on ws://host:8093/v1/stream while held ->
+// play binary reply frames. HTTP POST /v1/utterance is the fallback.
+// Serial (idle): tone | health | ping | ws
 
 #define I2S_PORT I2S_NUM_0
 
@@ -37,6 +41,20 @@ static String gDeviceId;
 static int16_t *gPcm = nullptr;
 static size_t gMaxSamples = 0;
 static String gTurnId;
+static IntercomWs gWs;
+static uint32_t gWsPingMs = 0;
+
+#ifndef WS_STREAM_SAMPLES
+#define WS_STREAM_SAMPLES 1024
+#endif
+#define WS_PING_MS 20000
+
+struct RecordStream {
+  bool (*send)(const int16_t *samples, size_t n, void *ctx);
+  void *ctx = nullptr;
+  bool ok = true;
+  size_t sent = 0;
+};
 
 static bool gThinking = false;
 static bool gPlaying = false;
@@ -524,8 +542,20 @@ static size_t appendMicI2s(const int32_t *raw, size_t bytesRead, size_t samples,
   return samples;
 }
 
-static size_t recordPtt() {
-  Serial.println("ptt: recording (hold, then release)");
+static void flushRecordStream(RecordStream *stream, size_t samples) {
+  if (!stream || !stream->ok || !stream->send || stream->sent >= samples) return;
+  const size_t n = samples - stream->sent;
+  if (!stream->send(gPcm + stream->sent, n, stream->ctx)) {
+    stream->ok = false;
+    Serial.println("ptt: ws send failed — will HTTP the clip");
+    return;
+  }
+  stream->sent = samples;
+}
+
+static size_t recordPtt(RecordStream *stream) {
+  Serial.println(stream ? "ptt: streaming (hold, then release)"
+                        : "ptt: recording (hold, then release)");
   ampMute(true);
   digitalWrite(LED_BUILTIN, HIGH);
   if (!startMic()) {
@@ -568,7 +598,11 @@ static size_t recordPtt() {
     }
     samples = appendMicI2s(raw, bytesRead, samples, &acc, &zeroRaw, &rawWords,
                            &peakRaw);
+    if (stream && stream->ok && samples - stream->sent >= WS_STREAM_SAMPLES) {
+      flushRecordStream(stream, samples);
+    }
   }
+  flushRecordStream(stream, samples);
 
   uint32_t outFlips = 0;
 #if MIC_PTT_PIN_DEBUG
@@ -927,6 +961,7 @@ static void dumpHttpBody(WiFiClient &c, const HttpHeaders &h) {
 
 static void cancelTurn(const String &turnId) {
   if (turnId.isEmpty()) return;
+  if (gWs.connected()) gWs.sendText("{\"type\":\"cancel\"}");
   WiFiClient c;
   if (!connectIntercom(c)) return;
   c.printf("POST /v1/turns/%s/cancel HTTP/1.1\r\n", turnId.c_str());
@@ -936,6 +971,212 @@ static void cancelTurn(const String &turnId) {
   readHeaders(c, h, HTTP_TIMEOUT_MS);
   c.stop();
   Serial.printf("cancel status %d\n", h.status);
+}
+
+static String jsonField(const char *json, const char *key) {
+  String pat = String("\"") + key + "\":";
+  const char *p = strstr(json, pat.c_str());
+  if (!p) return "";
+  p += pat.length();
+  while (*p == ' ' || *p == '\t') ++p;
+  if (*p == '"') {
+    ++p;
+    String out;
+    while (*p && *p != '"') {
+      if (*p == '\\' && p[1]) {
+        ++p;
+        out += *p++;
+      } else {
+        out += *p++;
+      }
+    }
+    return out;
+  }
+  if (strncmp(p, "true", 4) == 0) return "true";
+  if (strncmp(p, "false", 5) == 0) return "false";
+  String out;
+  while (*p && (isdigit((unsigned char)*p) || *p == '-' || *p == '.')) out += *p++;
+  return out;
+}
+
+static bool wsSendPcm(const int16_t *samples, size_t n, void *) {
+  if (!n) return true;
+  return gWs.sendBinary(reinterpret_cast<const uint8_t *>(samples), n * sizeof(int16_t));
+}
+
+static bool wsEnsure() {
+  if (INTERCOM_WS_PORT <= 0) return false;
+  if (WiFi.status() != WL_CONNECTED) return false;
+  const bool ok = gWs.ensure(INTERCOM_HOST, (uint16_t)INTERCOM_WS_PORT, INTERCOM_TOKEN,
+                             gDeviceId.c_str());
+  if (ok) gWsPingMs = millis();
+  return ok;
+}
+
+static void wsIdlePing() {
+  if (!gWs.connected()) return;
+  if (millis() - gWsPingMs < WS_PING_MS) return;
+  if (!gWs.sendPing()) {
+    gWs.close();
+    return;
+  }
+  gWsPingMs = millis();
+}
+
+static PlayResult playWsReply() {
+  Thinking think;
+  gPlayBytes = 0;
+  gVoiceFade = 0;
+  gPcmOddValid = false;
+  bool spkOn = false;
+  bool gotDone = false;
+  uint8_t buf[1024];
+  char text[768];
+
+  auto finishSpk = [&]() {
+    if (!spkOn) return;
+    ampMute(true);
+    stopSpk();
+    gPlaying = false;
+    spkOn = false;
+  };
+
+  while (!gotDone) {
+    thinkingTick();
+    if (pttHeld()) {
+      finishSpk();
+      return PlayResult::BargeIn;
+    }
+    size_t plen = 0;
+    const IntercomWs::Kind k = gWs.recvHeader(&plen, AUDIO_WAIT_MS);
+    if (k == IntercomWs::Kind::Timeout) {
+      Serial.println("ws: reply timeout");
+      finishSpk();
+      return PlayResult::Error;
+    }
+    if (k == IntercomWs::Kind::Error || k == IntercomWs::Kind::Close) {
+      Serial.println("ws: reply closed");
+      finishSpk();
+      gWs.close();
+      return PlayResult::Error;
+    }
+    if (k == IntercomWs::Kind::Ping) {
+      size_t n = min(plen, sizeof(buf));
+      if (n && !gWs.recvPayload(buf, n, HTTP_TIMEOUT_MS)) {
+        finishSpk();
+        return PlayResult::Error;
+      }
+      gWs.discardPayload(HTTP_TIMEOUT_MS);
+      gWs.sendPong(buf, n);
+      continue;
+    }
+    if (k == IntercomWs::Kind::Pong) {
+      gWs.discardPayload(HTTP_TIMEOUT_MS);
+      continue;
+    }
+    if (k == IntercomWs::Kind::Binary) {
+      if (!spkOn) {
+        gPlaying = true;
+        thinkLed(true);
+        if (!startSpk()) {
+          gWs.discardPayload(HTTP_TIMEOUT_MS);
+          return PlayResult::Error;
+        }
+        primeSpkSilence();
+        ampUnmuteAfterPrime();
+        spkOn = true;
+      }
+      size_t left = plen;
+      while (left > 0) {
+        if (pttHeld()) {
+          gWs.discardPayload(HTTP_TIMEOUT_MS);
+          finishSpk();
+          return PlayResult::BargeIn;
+        }
+        const size_t n = min(left, sizeof(buf));
+        if (!gWs.recvPayload(buf, n, HTTP_TIMEOUT_MS)) {
+          finishSpk();
+          return PlayResult::Error;
+        }
+        const PlayResult pr = writeMonoBytesToSpk(buf, n);
+        if (pr != PlayResult::Done) {
+          gWs.discardPayload(HTTP_TIMEOUT_MS);
+          finishSpk();
+          return pr;
+        }
+        left -= n;
+      }
+      continue;
+    }
+    if (k != IntercomWs::Kind::Text) {
+      gWs.discardPayload(HTTP_TIMEOUT_MS);
+      continue;
+    }
+    const size_t n = min(plen, sizeof(text) - 1);
+    if (n && !gWs.recvPayload(reinterpret_cast<uint8_t *>(text), n, HTTP_TIMEOUT_MS)) {
+      finishSpk();
+      return PlayResult::Error;
+    }
+    text[n] = 0;
+    gWs.discardPayload(HTTP_TIMEOUT_MS);
+    const String type = jsonField(text, "type");
+    if (type == "accept") {
+      const String id = jsonField(text, "turn_id");
+      if (id.length()) gTurnId = id;
+      Serial.printf("ws: accept turn=%s\n", gTurnId.c_str());
+    } else if (type == "turn") {
+      const String id = jsonField(text, "turn_id");
+      if (id.length()) gTurnId = id;
+      const String tr = jsonField(text, "transcript");
+      Serial.printf("ws: turn=%s\n", gTurnId.c_str());
+      if (jsonField(text, "fast_path") == "true") Serial.println("fast-path: 1");
+      if (tr.length()) Serial.printf("transcript: %s\n", tr.c_str());
+    } else if (type == "done") {
+      const String err = jsonField(text, "error");
+      if (err.length()) Serial.printf("ws: done error=%s\n", err.c_str());
+      gotDone = true;
+    } else if (type == "error") {
+      Serial.printf("ws: %s\n", jsonField(text, "error").c_str());
+      finishSpk();
+      return PlayResult::Error;
+    } else if (type == "ready") {
+      // Reused socket after a reconnect race — ignore.
+    }
+  }
+
+  finishSpk();
+  const char *rs = gPlayBytes >= 64 ? "done" : "empty";
+  Serial.printf("ws play: %u bytes %s\n", (unsigned)gPlayBytes, rs);
+  if (gPlayBytes < 64) {
+    Serial.println("play: empty audio — Arbiter/TTS produced no PCM");
+  }
+  return PlayResult::Done;
+}
+
+static PlayResult streamUtterance(size_t samples, bool alreadyStreamed) {
+  if (alreadyStreamed && gWs.connected()) {
+    if (!gWs.sendText("{\"type\":\"end\"}")) {
+      Serial.println("ws: end failed");
+      gWs.close();
+    } else {
+      Serial.printf("ws: end after %u samples\n", (unsigned)samples);
+      return playWsReply();
+    }
+  }
+  return postUtterance(gPcm, samples);
+}
+
+static PlayResult captureAndSend() {
+  RecordStream stream;
+  stream.send = wsSendPcm;
+  const bool live = wsEnsure();
+  const size_t n = recordPtt(live ? &stream : nullptr);
+  if (n < (SAMPLE_RATE / 10)) {
+    Serial.printf("too short (%u samples) — hold PTT ~1s and speak\n",
+                  (unsigned)n);
+    return PlayResult::Error;
+  }
+  return streamUtterance(n, live && stream.ok && stream.sent == n);
 }
 
 static PlayResult postUtterance(const int16_t *pcm, size_t samples) {
@@ -1188,9 +1429,15 @@ static void handleSerial() {
   } else if (cmd == "ampoff") {
     ampMute(true);
     Serial.println("ampoff: SD LOW");
+  } else if (cmd == "ws") {
+    Serial.printf("ws %s %s:%d\n", gWs.connected() ? "up" : "down", INTERCOM_HOST,
+                  INTERCOM_WS_PORT);
+    if (!gWs.connected() && INTERCOM_WS_PORT > 0) {
+      Serial.println(wsEnsure() ? "ws: connected" : "ws: connect failed");
+    }
   } else if (cmd.length()) {
     Serial.println(
-        "commands: say <text> | ping | health | wifi | scan | tone | beep | vol");
+        "commands: say <text> | ping | health | wifi | scan | tone | beep | vol | ws");
   }
 }
 
@@ -1272,7 +1519,8 @@ void setup() {
     gDeviceId = "nano-" + gDeviceId;
   }
   Serial.printf("device-id %s\n", gDeviceId.c_str());
-  Serial.printf("intercom %s:%d\n", INTERCOM_HOST, INTERCOM_PORT);
+  Serial.printf("intercom %s:%d  ws %s:%d\n", INTERCOM_HOST, INTERCOM_PORT,
+                INTERCOM_HOST, INTERCOM_WS_PORT);
   Serial.printf("volume adc=%d gain=%d\n", analogRead(PIN_VOLUME), gVolQ15);
   Serial.printf("spk i2s gpio bck=%d ws=%d din=%d sd=%d\n", i2sGpio(PIN_SPK_BCLK),
                 i2sGpio(PIN_SPK_WS), i2sGpio(PIN_SPK_DIN), i2sGpio(PIN_AMP_SD));
@@ -1283,12 +1531,16 @@ void setup() {
     Serial.println("volume at minimum — turn A0 pot CW for playback");
     Serial.println("(tone/beep ignore pot; use beep to test speaker)");
   }
-  Serial.println("serial: say <text> | ping | health | wifi | scan | tone");
+  Serial.println("serial: say <text> | ping | health | wifi | scan | tone | ws");
+  if (INTERCOM_WS_PORT > 0 && WiFi.status() == WL_CONNECTED) {
+    wsEnsure();
+  }
 }
 
 void loop() {
   handleSerial();
   updatePttLed();
+  wsIdlePing();
 
   if (!gPttArmed) {
     if (!pttHeld()) gPttArmed = true;
@@ -1303,24 +1555,17 @@ void loop() {
   delay(30);
   if (!pttHeld()) return;
 
-  const size_t n = recordPtt();
-  if (n < (SAMPLE_RATE / 10)) {
-    Serial.printf("too short (%u samples) — hold PTT ~1s and speak\n",
-                  (unsigned)n);
-    return;
-  }
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("no wifi — fix credentials or use serial: tone");
+    recordPtt(nullptr);
     return;
   }
 
-  PlayResult pr = postUtterance(gPcm, n);
+  PlayResult pr = captureAndSend();
   while (pr == PlayResult::BargeIn) {
     Serial.println("barge-in");
     cancelTurn(gTurnId);
     delay(30);
-    const size_t n2 = recordPtt();
-    if (n2 < (SAMPLE_RATE / 10)) break;
-    pr = postUtterance(gPcm, n2);
+    pr = captureAndSend();
   }
 }

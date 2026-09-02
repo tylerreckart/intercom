@@ -20,7 +20,7 @@
 
 namespace intercom {
 
-// Sink for reply PCM — HTTP chunked body today; WebSocket binary frames later.
+// Sink for reply PCM — HTTP chunked body or WebSocket binary frames.
 class AudioSink {
  public:
   virtual ~AudioSink() = default;
@@ -45,7 +45,7 @@ struct TurnHandle {
   std::mutex mu;
 };
 
-// Transport-agnostic utterance pipeline (HTTP PTT now; WS duplex later).
+// Transport-agnostic utterance pipeline (HTTP PTT and WS duplex).
 class TurnPipeline {
  public:
   TurnPipeline(Config config,
@@ -59,7 +59,8 @@ class TurnPipeline {
                            const std::vector<std::uint8_t>& pcm,
                            int sample_rate,
                            int channels,
-                           AudioSink& sink);
+                           AudioSink& sink,
+                           std::string turn_id = {});
 
   // Same as run_utterance after STT — used when the transport already has text
   // (HTTP sets X-Transcript before streaming PCM; WS can feed partials later).
