@@ -5,9 +5,11 @@ A custom, local-first **voice bridge** for [Arbiter](https://arbiter.run): ESP32
 ![PCB Board Front](.github/board_front.jpg)
 
 ```
-ESP32  --HTTP PTT PCM-->  Intercom  --text/SSE-->  arbiter --api
-ESP32  <--chunked PCM---  Intercom  <--text------/
+ESP32  --WS PCM while PTT held-->  Intercom  --text/SSE-->  arbiter --api
+ESP32  <--WS reply PCM-----------  Intercom  <--text------/
 ```
+
+HTTP `POST /v1/utterance` on `:8090` remains the fallback if the WebSocket is down.
 
 Intercom keeps Whisper and Kokoro loaded in local HTTP servers (`whisper-server` on `:8092`, `scripts/kokoro_server.py` on `:8091`) so each turn does not reload ONNX/ggml. Instant-ack phrases (`Yes, sir.`, `Of course.`, `Very good.`, …) are synthesized once at startup and replayed from PCM cache — including a local ack after `filler.instant_ack_ms` and an earlier tool ack after `filler.tool_ack_ms`. Spoken replies can start after about seven words (`early_flush_words`), not only at a period. Optional WebSocket duplex is `ws://<host>:8093/v1/stream`. Each turn logs a single `intercom latency …` line (`stt_ms`, `arbiter_ttft_ms`, `kokoro_ms`, `ttfa_ms`).
 

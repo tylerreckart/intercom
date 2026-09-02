@@ -175,7 +175,8 @@ TurnResult TurnPipeline::run_utterance(const std::string& device_id,
                                        const std::vector<std::uint8_t>& pcm,
                                        int sample_rate,
                                        int channels,
-                                       AudioSink& sink) {
+                                       AudioSink& sink,
+                                       std::string turn_id) {
   std::string err;
   const auto stt_t0 = std::chrono::steady_clock::now();
   const std::string transcript = stt_->transcribe(pcm, sample_rate, channels, &err);
@@ -183,15 +184,16 @@ TurnResult TurnPipeline::run_utterance(const std::string& device_id,
       std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - stt_t0)
           .count());
+  if (turn_id.empty()) turn_id = make_turn_id();
   if (transcript.empty()) {
     TurnResult result;
-    result.turn_id = make_turn_id();
+    result.turn_id = std::move(turn_id);
     result.error = err.empty() ? "stt failed" : err;
     std::cerr << "intercom latency turn=" << result.turn_id << " stt_ms=" << stt_ms
               << " error=" << result.error << std::endl;
     return result;
   }
-  return run_text_utterance(device_id, transcript, sink, {}, stt_ms);
+  return run_text_utterance(device_id, transcript, sink, std::move(turn_id), stt_ms);
 }
 
 TurnResult TurnPipeline::run_text_utterance(const std::string& device_id,

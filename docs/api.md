@@ -121,7 +121,8 @@ after `filler.tool_ack_ms` (default 250 ms) when nothing has been said yet.
 
 ## `WS /v1/stream`
 
-Duplex on `ws_listen_port` (default `8093`). HTTP PTT is unchanged.
+Duplex on `ws_listen_port` (default `8093`). HTTP PTT on `:8090` is unchanged
+and is the firmware fallback.
 
 Handshake: `GET /v1/stream` with `Upgrade: websocket`, `Authorization: Bearer
 <device_token>`, and `X-Device-Id` (or `?token=&device_id=`).
@@ -136,12 +137,14 @@ Handshake: `GET /v1/stream` with `Upgrade: websocket`, `Authorization: Bearer
 | Server | Meaning |
 |--------|---------|
 | `{"type":"ready","sample_rate"}` | After upgrade |
+| `{"type":"accept","turn_id"}` | Turn id assigned before STT / Arbiter, so barge-in can cancel |
 | binary frames | Reply PCM |
 | `{"type":"turn",…}` | Transcript / turn id after the pipeline returns |
 | `{"type":"done","ok","error"}` | Terminal |
 
 STT is still one-shot at `end` (Whisper is not streaming). The gain is sending
-mic bytes while the button is down instead of waiting for HTTP to open.
+mic bytes while the button is down instead of waiting for HTTP to open. The
+Nano ESP32 firmware does this by default (`INTERCOM_WS_PORT`, `0` disables).
 
 At 24 kHz, Intercom uses Kokoro's chunked raw-PCM endpoint and forwards each
 native phoneme batch as soon as it is generated. Older external Kokoro servers,

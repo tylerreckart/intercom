@@ -32,7 +32,8 @@ std::string encode_ws_frame(const WsFrame& frame, bool mask);
 std::optional<WsFrame> decode_ws_frame(std::string_view data, std::size_t* consumed);
 
 // Duplex voice socket: PCM up while PTT is held, PCM down on the same
-// connection. HTTP PTT is unchanged. Bind port 0 for an ephemeral test port.
+// connection. HTTP PTT remains the fallback. Bind port 0 for an ephemeral
+// test port.
 class WsServer {
  public:
   explicit WsServer(ServerDeps deps);
